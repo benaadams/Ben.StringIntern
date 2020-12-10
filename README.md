@@ -24,6 +24,14 @@ namespace Ben.Collections.Specialized
 }
 ```
 
+## Todo
+
+* Add tests and check it works
+* Add a "low water mark" interned count and evict based over that on LRU at Gen2
+* Add a "high water mark" max interned count and evict based on LRU on new add
+* Add a max size (string Length) to intern option
+* Add a `.Shared` global pool that is "threadsafe"
+
 ## Building
 
 `dotnet build -c Release`
