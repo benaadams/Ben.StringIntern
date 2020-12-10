@@ -10,6 +10,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+[assembly: InternalsVisibleTo("Ben.StringIntern.Tests")]
+
 namespace Ben.Collections.Specialized
 {
     [DebuggerDisplay("Count = {Count}")]
@@ -943,7 +945,7 @@ namespace Ben.Collections.Specialized
             while (i >= 0)
             {
                 ref Entry entry = ref entries[i];
-                if (entry.HashCode == hashCode && entry.Value == value)
+                if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value))
                 {
                     return entry.Value;
                 }

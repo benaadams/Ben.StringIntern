@@ -27,10 +27,13 @@ namespace System.Collections.Generic
             {
                 length -= 4;
 
-                hash1 = (BitOperations.RotateLeft(hash1, 5) + hash1) ^ currentUint;
-                hash2 = (BitOperations.RotateLeft(hash2, 5) + hash2) ^ Unsafe.AddByteOffset(ref currentUint, (IntPtr)1);
+                uint Uint0 = currentUint;
+                uint Uint1 = Unsafe.AddByteOffset(ref currentUint, (IntPtr)sizeof(uint));
+                currentUint = ref Unsafe.AddByteOffset(ref currentUint, (IntPtr)(sizeof(uint) * 2));
 
-                currentUint = Unsafe.AddByteOffset(ref currentUint, (IntPtr)(sizeof(uint) * 2));
+                hash1 = (BitOperations.RotateLeft(hash1, 5) + hash1) ^ Uint0;
+                hash2 = (BitOperations.RotateLeft(hash2, 5) + hash2) ^ Uint1;
+
             }
 
             if (length >= 2)
