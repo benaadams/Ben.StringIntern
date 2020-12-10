@@ -34,6 +34,7 @@ namespace Ben.StringIntern.Tests
                 string str3 = pool.InternUtf8(utf8Span);
 
                 Assert.Equal(i, pool.Count);
+                Assert.Equal(i * 4, (int)pool.Considered);
 
                 Assert.Same(str0, str1);
                 Assert.Same(str0, str2);

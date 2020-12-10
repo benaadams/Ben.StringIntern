@@ -36,6 +36,8 @@ namespace Ben.Collections.Specialized
 
         private ulong _fastModMultiplier;
 
+        private ulong _lastUse;
+
         private int _count;
         private int _freeList;
         private int _freeCount;
@@ -281,6 +283,7 @@ namespace Ben.Collections.Specialized
 
         /// <summary>Gets the number of elements that are contained in the set.</summary>
         public int Count => _count - _freeCount;
+        public ulong Considered => _lastUse;
 
         bool ICollection<string>.IsReadOnly => false;
 
@@ -942,11 +945,13 @@ namespace Ben.Collections.Specialized
             bucket = ref GetBucketRef(hashCode);
             int i = bucket - 1; // Value in _buckets is 1-based
 
+            _lastUse++;
             while (i >= 0)
             {
                 ref Entry entry = ref entries[i];
                 if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value))
                 {
+                    entry.LastUse = _lastUse;
                     return entry.Value;
                 }
                 i = entry.Next;
@@ -989,11 +994,13 @@ namespace Ben.Collections.Specialized
             bucket = ref GetBucketRef(hashCode);
             int i = bucket - 1; // Value in _buckets is 1-based
 
+            _lastUse++;
             while (i >= 0)
             {
                 ref Entry entry = ref entries[i];
                 if (entry.HashCode == hashCode && entry.Value == value)
                 {
+                    entry.LastUse = _lastUse;
                     return entry.Value;
                 }
                 i = entry.Next;
@@ -1039,6 +1046,7 @@ namespace Ben.Collections.Specialized
                 entry.HashCode = hashCode;
                 entry.Next = bucket - 1; // Value in _buckets is 1-based
                 entry.Value = value;
+                entry.LastUse = _lastUse;
                 bucket = index + 1;
                 _version++;
             }
@@ -1376,6 +1384,7 @@ namespace Ben.Collections.Specialized
             /// </summary>
             public int Next;
             public string Value;
+            public ulong LastUse;
         }
 
         public struct Enumerator : IEnumerator<string>
