@@ -29,10 +29,14 @@ namespace Ben.Collections.Specialized
         public string InternAscii(ReadOnlySpan<byte> asciiValue);
         public string InternUtf8(ReadOnlySpan<byte> utf8Value);
         
+        // Gets the number of strings currently in the pool.
         public int Count { get; }
-        public long Added { get; }
+        // Count of strings checked
         public long Considered { get; }
+        // Count of strings deduplicated
         public long Deduped { get; }
+        // Count of strings added to the pool, may be larger than Count if there is a maxCount.
+        public long Added { get; }
     }
 }
 ```
