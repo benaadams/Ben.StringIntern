@@ -4,8 +4,9 @@
     <TargetFrameworks>net5.0;netcoreapp3.1</TargetFrameworks>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.0.5</Version>
+    <Version>0.0.6</Version>
     <LangVersion>latest</LangVersion>
+    <RepositoryUrl>https://github.com/benaadams/Ben.StringIntern</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp3.1'">
