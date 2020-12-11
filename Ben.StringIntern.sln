@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30709.64
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ben.StringIntern", "Ben.StringIntern.csproj", "{EA08CE66-84CD-4538-B51B-B1913ED6BBF3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ben.StringIntern", "src\Ben.StringIntern.csproj", "{EA08CE66-84CD-4538-B51B-B1913ED6BBF3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ben.StringIntern.Tests", "..\tests\Ben.StringIntern.Tests\Ben.StringIntern.Tests.csproj", "{DE8B425A-2DB1-469B-BE46-609F1C2D69E3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ben.StringIntern.Tests", "tests\Ben.StringIntern.Tests\Ben.StringIntern.Tests.csproj", "{DE8B425A-2DB1-469B-BE46-609F1C2D69E3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
