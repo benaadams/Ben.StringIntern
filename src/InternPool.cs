@@ -188,7 +188,7 @@ namespace Ben.Collections.Specialized
         /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
         /// <param name="value">The byte sequence to add to the intern pool.</param>
         /// <returns>The interned string.</returns>
-        public string InteInternAsciirnUtf8(byte[] asciiValue)
+        public string InternAscii(byte[] asciiValue)
             => InternAscii(new ReadOnlySpan<byte>(asciiValue));
 
         /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
