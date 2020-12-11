@@ -12,12 +12,17 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 [assembly: InternalsVisibleTo("Ben.StringIntern.Tests")]
+#if NET5
 [module: SkipLocalsInit()]
+#endif
 
 namespace Ben.Collections.Specialized
 {
     [DebuggerDisplay("Count = {Count}")]
-    public class InternPool : ICollection<string>, ISet<string>, IReadOnlyCollection<string>, IReadOnlySet<string>
+    public class InternPool : ICollection<string>, ISet<string>, IReadOnlyCollection<string>
+#if NET5_0
+        , IReadOnlySet<string>
+#endif
     {
         /// <summary>Cutoff point for stackallocs. This corresponds to the number of ints.</summary>
         private const int StackAllocThresholdInts = 100;
@@ -185,7 +190,11 @@ namespace Ben.Collections.Specialized
                 array = ArrayPool<char>.Shared.Rent(asciiValue.Length);
             }
 
+#if NET5_0
             Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
+#else
+            Span<char> span = array is null ? stackalloc char[asciiValue.Length] : array;
+#endif
 
             int count = Encoding.ASCII.GetChars(asciiValue, span);
             span = span.Slice(0, count);
@@ -226,7 +235,11 @@ namespace Ben.Collections.Specialized
                 array = ArrayPool<char>.Shared.Rent(count);
             }
 
+#if NET5_0
             Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
+#else
+            Span<char> span = array is null ? stackalloc char[utf8Value.Length] : array;
+#endif
 
             count = Encoding.UTF8.GetChars(utf8Value, span);
             span = span.Slice(0, count);
@@ -1242,25 +1255,42 @@ namespace Ben.Collections.Specialized
                     }
                     else
                     {
+#if NET5_0
                         var span = CollectionsMarshal.AsSpan(churnPool);
                         for (int index = 0; index < span.Length; index++)
                         {
                             (long use, _) = span[index];
-
+#else
+                        var length = churnPool.Count;
+                        for (int index = 0; index < length; index++)
+                        {
+                            (long use, _) = churnPool[index];
+#endif
                             if (use < lastUse) continue;
 
                             churnPool.Insert(index, (lastUse, entry.Value));
                             break;
                         }
 
+#if NET5_0
                         Debug.Assert(churnPool!.Count > span.Length);
+#else
+                        Debug.Assert(churnPool!.Count > length);
+#endif
                         (currentHigh, _) = churnPool[churnPool.Count - 1];
                     }
                 }
             }
 
+#if NET5_0
             foreach ((long lastUse, string value) in CollectionsMarshal.AsSpan(churnPool))
             {
+#else
+
+            for (int i = 0; i < churnPool.Count; i++)
+            {
+                (long lastUse, string value) = churnPool[i];
+#endif
                 var index = FindItemIndex(value);
                 Debug.Assert(index >= 0);
 
@@ -1278,19 +1308,29 @@ namespace Ben.Collections.Specialized
             var index = FindItemIndex(value);
             Debug.Assert(index >= 0);
 
+#if NET5_0
             var span = CollectionsMarshal.AsSpan(_churnPool);
-
             for (int i = 0; i < span.Length; i++)
             {
                 (_, string item) = span[i];
-
+#else
+            var churnPool = _churnPool!;
+            var length = churnPool.Count;
+            for (int i = 0; i < length; i++)
+            {
+                (_, string item) = churnPool[i];
+#endif
                 if (item != value) continue;
 
                 _churnPool!.RemoveAt(i);
                 break;
             }
 
+#if NET5_0
             Debug.Assert(_churnPool!.Count < span.Length);
+#else
+            Debug.Assert(_churnPool!.Count < length);
+#endif
         }
 
         /// <summary>
@@ -1582,13 +1622,7 @@ namespace Ben.Collections.Specialized
             return (uniqueFoundCount, unfoundCount);
         }
 
-        /// <summary>
-        /// Checks if equality comparers are equal. This is used for algorithms that can
-        /// speed up if it knows the other item has unique elements. I.e. if they're using
-        /// different equality comparers, then uniqueness assumption between sets break.
-        /// </summary>
-        private static bool EqualityComparersAreEqual(HashSet<string> set) => set.Comparer.Equals(EqualityComparer<string>.Default) || set.Comparer.Equals(StringComparer.Ordinal);
-
+#if NET5_0
         bool IReadOnlySet<string>.IsProperSubsetOf(IEnumerable<string> other)
             => ((ISet<string>)this).IsProperSubsetOf(other);
 
@@ -1606,6 +1640,7 @@ namespace Ben.Collections.Specialized
 
         bool IReadOnlySet<string>.SetEquals(IEnumerable<string> other)
             => ((ISet<string>)this).SetEquals(other);
+#endif
 
         private struct Entry
         {

@@ -219,7 +219,7 @@ namespace Ben.StringIntern.Tests
                 array[0] = (char)('0' + (i % 10));
             }
 
-            return new(array);
+            return new string(array);
         }
     }
 }
