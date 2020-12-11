@@ -4,9 +4,6 @@
 
 Inspired by this issue being closed: "API request: string.Intern(ReadOnlySpan<char> ...)" [#28368](https://github.com/dotnet/runtime/issues/28368)
 
-
-Don't know if it works; needs tests and whatnot
-
 ```csharp
 namespace Ben.Collections.Specialized
 {
@@ -26,11 +23,12 @@ namespace Ben.Collections.Specialized
 
 ## Todo
 
-* Add more tests
-* Add a "low water mark" interned count and evict based over that on LRU at Gen2
-* Add a "high water mark" max interned count and evict based on LRU on new add
-* Add a max size (string Length) to intern option
-* Add a `.Shared` global pool that is "threadsafe"
+- [x] Add some tests
+- [ ] Add more tests
+- [x] Add a "high water mark" max interned count and evict based on LRU on new add
+- [ ] Add a "low water mark" interned count and evict based over that on LRU at Gen2
+- [ ] Add a max size (string Length) to intern option
+- [ ] Add a `.Shared` global pool that is "threadsafe"
 
 ## Building
 
