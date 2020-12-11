@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 [assembly: InternalsVisibleTo("Ben.StringIntern.Tests")]
+[module: SkipLocalsInit()]
 
 namespace Ben.Collections.Specialized
 {
