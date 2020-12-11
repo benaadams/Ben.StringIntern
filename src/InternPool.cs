@@ -201,7 +201,7 @@ namespace Ben.Collections.Specialized
 
             string value = Intern(span);
 
-            if (array is not null)
+            if (array != null)
             {
                 ArrayPool<char>.Shared.Return(array);
             }
@@ -246,7 +246,7 @@ namespace Ben.Collections.Specialized
 
             string value = Intern(span);
 
-            if (array is not null)
+            if (array != null)
             {
                 ArrayPool<char>.Shared.Return(array);
             }
