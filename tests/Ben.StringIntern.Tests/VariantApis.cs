@@ -15,7 +15,7 @@ namespace Ben.StringIntern.Tests
         {
             var pool = new InternPool();
 
-            for (int i = 0; i < 126; i++)
+            for (int i = 0; i < 127; i++)
             {
                 var array = Enumerable.Range(1, i).Select(x => (char)x).ToArray();
                 string str = new (array);
