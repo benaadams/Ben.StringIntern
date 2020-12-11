@@ -4,7 +4,7 @@
     <TargetFrameworks>net5.0;netcoreapp3.1</TargetFrameworks>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.0.4</Version>
+    <Version>0.0.5</Version>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
