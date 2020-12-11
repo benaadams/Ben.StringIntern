@@ -38,12 +38,13 @@ namespace Ben.Collections.Specialized
         private ulong _fastModMultiplier;
 
         private long _lastUse;
+        private long _adds;
 
         private int _count;
         private int _freeList;
         private int _freeCount;
         private int _version;
-        private int _maxSize = -1;
+        private int _maxCount = -1;
 
         private bool _randomisedHash;
 
@@ -62,34 +63,44 @@ namespace Ben.Collections.Specialized
             }
         }
 
-        public InternPool(int capacity, int maxSize)
+        public InternPool(int capacity, int maxCount)
         {
             if (capacity < 0)
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.capacity);
             }
-            if (maxSize < -1 || maxSize == 0)
+            if (maxCount < -1 || maxCount == 0)
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.maxSize);
             }
-            if ((uint)capacity > (uint)maxSize)
+            if ((uint)capacity > (uint)maxCount)
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.capacity);
             }
 
-            _maxSize = maxSize;
+            _maxCount = maxCount;
             if (capacity > 0)
             {
                 Initialize(capacity);
             }
         }
 
-        public InternPool(IEnumerable<string> collection)
+        public InternPool(IEnumerable<string> collection) : this(collection, maxCount: -1)
+        {
+        }
+
+        public InternPool(IEnumerable<string> collection, int maxCount)
         {
             if (collection == null)
             {
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.collection);
             }
+            if (maxCount < -1 || maxCount == 0)
+            {
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.maxSize);
+            }
+
+            _maxCount = maxCount;
 
             if (collection is InternPool otherAsInternPool)
             {
@@ -307,7 +318,10 @@ namespace Ben.Collections.Specialized
 
         /// <summary>Gets the number of elements that are contained in the set.</summary>
         public int Count => _count - _freeCount;
+
         public long Considered => _lastUse;
+        public long Deduped => _lastUse - _adds;
+        public long Added => _adds;
 
         bool ICollection<string>.IsReadOnly => false;
 
@@ -890,7 +904,11 @@ namespace Ben.Collections.Specialized
         /// <returns>The interned string.</returns>
         public string InternAscii(ReadOnlySpan<byte> asciiValue)
         {
-            if (asciiValue.Length == 0) return string.Empty;
+            if (asciiValue.Length == 0)
+            {
+                _lastUse++;
+                return string.Empty;
+            }
 
             char[]? array = null;
             if (asciiValue.Length > StackAllocThresholdChars)
@@ -918,7 +936,11 @@ namespace Ben.Collections.Specialized
         /// <returns>The interned string.</returns>
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
-            if (utf8Value.Length == 0) return string.Empty;
+            if (utf8Value.Length == 0)
+            {
+                _lastUse++;
+                return string.Empty;
+            }
 
             char[]? array = null;
             
@@ -949,6 +971,7 @@ namespace Ben.Collections.Specialized
         /// <returns>The interned string.</returns>
         public string Intern(ReadOnlySpan<char> value)
         {
+            _lastUse++;
             if (value.Length == 0) return string.Empty;
 
             if (_buckets == null)
@@ -969,7 +992,6 @@ namespace Ben.Collections.Specialized
             bucket = ref GetBucketRef(hashCode);
             int i = bucket - 1; // Value in _buckets is 1-based
 
-            _lastUse++;
             while (i >= 0)
             {
                 ref Entry entry = ref entries[i];
@@ -1001,6 +1023,7 @@ namespace Ben.Collections.Specialized
         [return: NotNullIfNotNull("value")]
         public string? Intern(string? value)
         {
+            _lastUse++;
             if (value is null) return null;
             if (value.Length == 0) return string.Empty;
 
@@ -1022,7 +1045,6 @@ namespace Ben.Collections.Specialized
             bucket = ref GetBucketRef(hashCode);
             int i = bucket - 1; // Value in _buckets is 1-based
 
-            _lastUse++;
             while (i >= 0)
             {
                 ref Entry entry = ref entries[i];
@@ -1050,7 +1072,7 @@ namespace Ben.Collections.Specialized
 
         private string AddNewEntry(string value, ref Entry[] entries, int hashCode, uint collisionCount, ref int bucket)
         {
-            if ((uint)Count + 1 > (uint)_maxSize)
+            if ((uint)Count + 1 > (uint)_maxCount)
             {
                 RemoveLeastRecentlyUsed();
             }
@@ -1094,6 +1116,7 @@ namespace Ben.Collections.Specialized
                 Resize(entries.Length, forceNewHashCodes: true);
             }
 
+            _adds++;
             return value;
         }
 

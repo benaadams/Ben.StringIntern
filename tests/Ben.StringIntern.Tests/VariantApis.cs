@@ -15,7 +15,7 @@ namespace Ben.StringIntern.Tests
         {
             var pool = new InternPool();
 
-            for (int i = 0; i < 127; i++)
+            for (int i = 1; i < 127; i++)
             {
                 var array = Enumerable.Range(1, i).Select(x => (char)x).ToArray();
                 string str = new (array);
@@ -35,6 +35,8 @@ namespace Ben.StringIntern.Tests
 
                 Assert.Equal(i, pool.Count);
                 Assert.Equal(i * 4, (int)pool.Considered);
+                Assert.Equal(i, (int)pool.Added);
+                Assert.Equal(i * 4 - i, (int)pool.Deduped);
 
                 Assert.Same(str0, str1);
                 Assert.Same(str0, str2);
