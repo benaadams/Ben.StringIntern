@@ -54,6 +54,24 @@ namespace Ben.Collections.Specialized
 
         private bool _randomisedHash;
 
+
+        /// <summary>
+        /// Gets the number of strings currently in the pool.
+        /// </summary>
+        public int Count => _count - _freeCount;
+        /// <summary>
+        /// Count of strings checked
+        /// </summary>
+        public long Considered => _lastUse;
+        /// <summary>
+        /// Count of strings deduplicated
+        /// </summary>
+        public long Deduped => _lastUse - _adds;
+        /// <summary>
+        /// Count of strings added to the pool, may be larger than <seealso cref="Count"/> if there is a maxCount
+        /// </summary>
+        public long Added => _adds;
+
         /// <summary>
         /// Initializes a new empty instance of the <see cref="InternPool"/> class, 
         /// and is unbounded.
@@ -551,13 +569,6 @@ namespace Ben.Collections.Specialized
 
             return false;
         }
-
-        /// <summary>Gets the number of elements that are contained in the set.</summary>
-        public int Count => _count - _freeCount;
-
-        public long Considered => _lastUse;
-        public long Deduped => _lastUse - _adds;
-        public long Added => _adds;
 
         bool ICollection<string>.IsReadOnly => false;
 
