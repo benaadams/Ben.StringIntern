@@ -10,10 +10,16 @@ namespace Ben.Collections.Specialized
 {
     public class InternPool
     {
+        // Unbounded
         public InternPool();
+        // Unbounded with prereserved capacity
         public InternPool(int capacity);
+        // Capped size with prereserved capacity, entires evicted based on LRU
         public InternPool(int capacity, int maxCount);
+        
+        // Deduplicated; unbounded
         public InternPool(IEnumerable<string> collection);
+        // Deduplicated; capped size, entires evicted based on LRU
         public InternPool(IEnumerable<string> collection, int maxCount);
     
         [return: NotNullIfNotNull("value")]

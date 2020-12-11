@@ -49,8 +49,19 @@ namespace Ben.Collections.Specialized
 
         private bool _randomisedHash;
 
+        /// <summary>
+        /// Initializes a new empty instance of the <see cref="InternPool"/> class, 
+        /// and is unbounded.
+        /// </summary>
         public InternPool() { }
 
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="InternPool"/> class that is empty, 
+        /// but has reserved space for <paramref name="capacity"/> entries 
+        /// and is unbounded.
+        /// </summary>
+        /// <param name="capacity">The initial size of the <see cref="InternPool"/></param>
         public InternPool(int capacity)
         {
             if (capacity < 0)
@@ -64,6 +75,14 @@ namespace Ben.Collections.Specialized
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="InternPool"/> class that is empty, 
+        /// but has reserved space for <paramref name="capacity"/> items 
+        /// and is capped at <paramref name="maxCount"/> entries, with items being evicted based on least recently used.
+        /// </summary>
+        /// <param name="capacity">The initial size of the <see cref="InternPool"/></param>
+        /// <param name="maxCount">The max size of the <see cref="InternPool"/>; 
+        /// least recently used entries are evicted when max size is reached and a new item is added.</param>
         public InternPool(int capacity, int maxCount)
         {
             if (capacity < 0)
@@ -86,10 +105,24 @@ namespace Ben.Collections.Specialized
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="InternPool"/> class, 
+        /// contains deduplicated entries copied from the specified collection, 
+        /// and is unbounded.
+        /// </summary>
+        /// <param name="collection">The collection whose elements are copied to the new set.</param>
         public InternPool(IEnumerable<string> collection) : this(collection, maxCount: -1)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="InternPool"/> class, 
+        /// contains deduplicated entries copied from the specified collection, 
+        /// and is capped at <paramref name="maxCount"/> entries, with items being evicted based on least recently used.
+        /// </summary>
+        /// <param name="collection">The collection whose elements are copied to the new set.</param>
+        /// <param name="maxCount">The max size of the <see cref="InternPool"/>; 
+        /// least recently used entries are evicted when max size is reached and a new item is added.</param>
         public InternPool(IEnumerable<string> collection, int maxCount)
         {
             if (collection == null)
@@ -127,6 +160,195 @@ namespace Ben.Collections.Specialized
                     TrimExcess();
                 }
             }
+        }
+
+        /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The byte sequence to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        public string InteInternAsciirnUtf8(byte[] asciiValue)
+            => InternAscii(new ReadOnlySpan<byte>(asciiValue));
+
+        /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The element to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        public string InternAscii(ReadOnlySpan<byte> asciiValue)
+        {
+            if (asciiValue.Length == 0)
+            {
+                _lastUse++;
+                return string.Empty;
+            }
+
+            char[]? array = null;
+            if (asciiValue.Length > StackAllocThresholdChars)
+            {
+                array = ArrayPool<char>.Shared.Rent(asciiValue.Length);
+            }
+
+            Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
+
+            int count = Encoding.ASCII.GetChars(asciiValue, span);
+            span = span.Slice(0, count);
+
+            string value = Intern(span);
+
+            if (array is not null)
+            {
+                ArrayPool<char>.Shared.Return(array);
+            }
+
+            return value;
+        }
+
+        /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The byte sequence to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        public string InternUtf8(byte[] utf8Value)
+            => InternUtf8(new ReadOnlySpan<byte>(utf8Value));
+
+        /// <summary>Adds the specified UTF8 string to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The byte sequence to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        public string InternUtf8(ReadOnlySpan<byte> utf8Value)
+        {
+            if (utf8Value.Length == 0)
+            {
+                _lastUse++;
+                return string.Empty;
+            }
+
+            char[]? array = null;
+
+            int count = Encoding.UTF8.GetCharCount(utf8Value);
+
+            if (count > StackAllocThresholdChars)
+            {
+                array = ArrayPool<char>.Shared.Rent(count);
+            }
+
+            Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
+
+            count = Encoding.UTF8.GetChars(utf8Value, span);
+            span = span.Slice(0, count);
+
+            string value = Intern(span);
+
+            if (array is not null)
+            {
+                ArrayPool<char>.Shared.Return(array);
+            }
+
+            return value;
+        }
+
+        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The char sequence to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        public string Intern(char[] value)
+            => Intern(new ReadOnlySpan<char>(value));
+
+        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The char sequence to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        public string Intern(ReadOnlySpan<char> value)
+        {
+            _lastUse++;
+            if (value.Length == 0) return string.Empty;
+
+            if (_buckets == null)
+            {
+                Initialize(0);
+            }
+            Debug.Assert(_buckets != null);
+
+            Entry[]? entries = _entries;
+            Debug.Assert(entries != null, "expected entries to be non-null");
+
+            int hashCode;
+
+            uint collisionCount = 0;
+            ref int bucket = ref Unsafe.NullRef<int>();
+
+            hashCode = _randomisedHash ? value.GetRandomizedHashCode() : value.GetNonRandomizedHashCode();
+            bucket = ref GetBucketRef(hashCode);
+            int i = bucket - 1; // Value in _buckets is 1-based
+
+            while (i >= 0)
+            {
+                ref Entry entry = ref entries[i];
+                if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value))
+                {
+                    if (entry.LastUse < 0)
+                    {
+                        RemoveFromChurnPool(entry.Value);
+                    }
+                    entry.LastUse = _lastUse;
+                    return entry.Value;
+                }
+                i = entry.Next;
+
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    // The chain of entries forms a loop, which means a concurrent update has happened.
+                    ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
+                }
+            }
+
+            return AddNewEntry(value.ToString(), ref entries, hashCode, collisionCount, ref bucket);
+        }
+
+        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The element to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        [return: NotNullIfNotNull("value")]
+        public string? Intern(string? value)
+        {
+            _lastUse++;
+            if (value is null) return null;
+            if (value.Length == 0) return string.Empty;
+
+            if (_buckets == null)
+            {
+                Initialize(0);
+            }
+            Debug.Assert(_buckets != null);
+
+            Entry[]? entries = _entries;
+            Debug.Assert(entries != null, "expected entries to be non-null");
+
+            int hashCode;
+
+            uint collisionCount = 0;
+            ref int bucket = ref Unsafe.NullRef<int>();
+
+            hashCode = _randomisedHash ? value.GetRandomizedHashCode() : value.GetNonRandomizedHashCode();
+            bucket = ref GetBucketRef(hashCode);
+            int i = bucket - 1; // Value in _buckets is 1-based
+
+            while (i >= 0)
+            {
+                ref Entry entry = ref entries[i];
+                if (entry.HashCode == hashCode && entry.Value == value)
+                {
+                    if (entry.LastUse < 0)
+                    {
+                        RemoveFromChurnPool(entry.Value);
+                    }
+                    entry.LastUse = _lastUse;
+                    return entry.Value;
+                }
+                i = entry.Next;
+
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    // The chain of entries forms a loop, which means a concurrent update has happened.
+                    ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
+                }
+            }
+
+            return AddNewEntry(value, ref entries, hashCode, collisionCount, ref bucket);
         }
 
         /// <summary>Initializes the InternPool from another InternPool with the same element type and equality comparer.</summary>
@@ -898,177 +1120,6 @@ namespace Ben.Collections.Specialized
             }
 
             return size;
-        }
-
-        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
-        /// <param name="value">The element to add to the intern pool.</param>
-        /// <returns>The interned string.</returns>
-        public string InternAscii(ReadOnlySpan<byte> asciiValue)
-        {
-            if (asciiValue.Length == 0)
-            {
-                _lastUse++;
-                return string.Empty;
-            }
-
-            char[]? array = null;
-            if (asciiValue.Length > StackAllocThresholdChars)
-            {
-                array = ArrayPool<char>.Shared.Rent(asciiValue.Length);
-            }
-
-            Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
-
-            int count = Encoding.ASCII.GetChars(asciiValue, span);
-            span = span.Slice(0, count);
-
-            string value = Intern(span);
-
-            if (array is not null)
-            {
-                ArrayPool<char>.Shared.Return(array);
-            }
-
-            return value;
-        }
-
-        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
-        /// <param name="value">The element to add to the intern pool.</param>
-        /// <returns>The interned string.</returns>
-        public string InternUtf8(ReadOnlySpan<byte> utf8Value)
-        {
-            if (utf8Value.Length == 0)
-            {
-                _lastUse++;
-                return string.Empty;
-            }
-
-            char[]? array = null;
-            
-            int count = Encoding.UTF8.GetCharCount(utf8Value);
-
-            if (count > StackAllocThresholdChars)
-            {
-                array = ArrayPool<char>.Shared.Rent(count);
-            }
-
-            Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
-
-            count = Encoding.UTF8.GetChars(utf8Value, span);
-            span = span.Slice(0, count);
-
-            string value = Intern(span);
-
-            if (array is not null)
-            {
-                ArrayPool<char>.Shared.Return(array);
-            }
-
-            return value;
-        }
-
-        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
-        /// <param name="value">The element to add to the intern pool.</param>
-        /// <returns>The interned string.</returns>
-        public string Intern(ReadOnlySpan<char> value)
-        {
-            _lastUse++;
-            if (value.Length == 0) return string.Empty;
-
-            if (_buckets == null)
-            {
-                Initialize(0);
-            }
-            Debug.Assert(_buckets != null);
-
-            Entry[]? entries = _entries;
-            Debug.Assert(entries != null, "expected entries to be non-null");
-
-            int hashCode;
-
-            uint collisionCount = 0;
-            ref int bucket = ref Unsafe.NullRef<int>();
-
-            hashCode = _randomisedHash ? value.GetRandomizedHashCode() : value.GetNonRandomizedHashCode();
-            bucket = ref GetBucketRef(hashCode);
-            int i = bucket - 1; // Value in _buckets is 1-based
-
-            while (i >= 0)
-            {
-                ref Entry entry = ref entries[i];
-                if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value))
-                {
-                    if (entry.LastUse < 0)
-                    {
-                        RemoveFromChurnPool(entry.Value);
-                    }
-                    entry.LastUse = _lastUse;
-                    return entry.Value;
-                }
-                i = entry.Next;
-
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
-                {
-                    // The chain of entries forms a loop, which means a concurrent update has happened.
-                    ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
-                }
-            }
-
-            return AddNewEntry(value.ToString(), ref entries, hashCode, collisionCount, ref bucket);
-        }
-
-        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
-        /// <param name="value">The element to add to the intern pool.</param>
-        /// <returns>The interned string.</returns>
-        [return: NotNullIfNotNull("value")]
-        public string? Intern(string? value)
-        {
-            _lastUse++;
-            if (value is null) return null;
-            if (value.Length == 0) return string.Empty;
-
-            if (_buckets == null)
-            {
-                Initialize(0);
-            }
-            Debug.Assert(_buckets != null);
-
-            Entry[]? entries = _entries;
-            Debug.Assert(entries != null, "expected entries to be non-null");
-
-            int hashCode;
-
-            uint collisionCount = 0;
-            ref int bucket = ref Unsafe.NullRef<int>();
-
-            hashCode = _randomisedHash ? value.GetRandomizedHashCode() : value.GetNonRandomizedHashCode();
-            bucket = ref GetBucketRef(hashCode);
-            int i = bucket - 1; // Value in _buckets is 1-based
-
-            while (i >= 0)
-            {
-                ref Entry entry = ref entries[i];
-                if (entry.HashCode == hashCode && entry.Value == value)
-                {
-                    if (entry.LastUse < 0)
-                    {
-                        RemoveFromChurnPool(entry.Value);
-                    }
-                    entry.LastUse = _lastUse;
-                    return entry.Value;
-                }
-                i = entry.Next;
-
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
-                {
-                    // The chain of entries forms a loop, which means a concurrent update has happened.
-                    ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
-                }
-            }
-
-            return AddNewEntry(value, ref entries, hashCode, collisionCount, ref bucket);
         }
 
         private string AddNewEntry(string value, ref Entry[] entries, int hashCode, uint collisionCount, ref int bucket)

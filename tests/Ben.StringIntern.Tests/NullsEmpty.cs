@@ -15,7 +15,7 @@ namespace Ben.StringIntern.Tests
         {
             var pool = new InternPool();
 
-            string str = pool.Intern(null);
+            string str = pool.Intern((string)null);
             Assert.Null(str);
 
             Assert.Empty(pool);
