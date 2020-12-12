@@ -19,7 +19,9 @@ namespace Ben.StringIntern.Tests
             Assert.Null(str);
 
             Assert.Empty(pool);
+#pragma warning disable xUnit2013 // Do not use equality check to check for collection size.
             Assert.Equal(0, pool.Count);
+#pragma warning restore xUnit2013 // Do not use equality check to check for collection size.
             Assert.Equal(1, (int)pool.Considered);
             Assert.Equal(0, (int)pool.Added);
             Assert.Equal(1, (int)pool.Deduped);
@@ -45,7 +47,9 @@ namespace Ben.StringIntern.Tests
             Assert.Same(string.Empty, str);
 
             Assert.Empty(pool);
+#pragma warning disable xUnit2013 // Do not use equality check to check for collection size.
             Assert.Equal(0, pool.Count);
+#pragma warning restore xUnit2013 // Do not use equality check to check for collection size.
             Assert.Equal(4, (int)pool.Considered);
             Assert.Equal(0, (int)pool.Added);
             Assert.Equal(4, (int)pool.Deduped);
