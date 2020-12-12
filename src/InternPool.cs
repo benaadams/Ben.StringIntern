@@ -25,8 +25,8 @@ namespace Ben.Collections.Specialized
 #endif
     {
         /// <summary>Cutoff point for stackallocs. This corresponds to the number of ints.</summary>
-        private const int StackAllocThresholdInts = 100;
-        private const int StackAllocThresholdChars = StackAllocThresholdInts * 2;
+        private const int StackAllocThresholdInts = 128;
+        internal const int StackAllocThresholdChars = StackAllocThresholdInts * 2;
 
         /// <summary>
         /// When constructing a hashset from an existing collection, it may contain duplicates,
