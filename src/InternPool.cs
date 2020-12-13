@@ -321,7 +321,7 @@ namespace Ben.Collections.Specialized
                 {
                     if (entry.LastUse < 0)
                     {
-                        RemoveFromChurnPool(entry.Value, GetGeneration(entry.LastUse));
+                        RemoveFromChurnPool(entry.Value, entry.LastUse);
                     }
                     entry.LastUse = GetMultipleUse();
                     return entry.Value;
@@ -374,7 +374,7 @@ namespace Ben.Collections.Specialized
                 {
                     if (entry.LastUse < 0)
                     {
-                        RemoveFromChurnPool(entry.Value, GetGeneration(entry.LastUse));
+                        RemoveFromChurnPool(entry.Value, entry.LastUse);
                     }
                     entry.LastUse = GetMultipleUse();
                     return entry.Value;
@@ -1387,34 +1387,17 @@ namespace Ben.Collections.Specialized
             }
         }
 
-        private void RemoveFromChurnPool(string value, int generation)
+        private void RemoveFromChurnPool(string value, long lastUse)
         {
-            var index = FindItemIndex(value);
-            Debug.Assert(index >= 0);
+            int generation = GetGeneration(lastUse);
+            Debug.Assert(lastUse < 0);
 
             var churnPool = GetPool(generation)!;
-#if NET5_0
-            var span = CollectionsMarshal.AsSpan(churnPool);
-            for (int i = 0; i < span.Length; i++)
-            {
-                (_, string item) = span[i];
-#else
-            var length = churnPool.Count;
-            for (int i = 0; i < length; i++)
-            {
-                (_, string item) = churnPool[i];
-#endif
-                if (item != value) continue;
 
-                churnPool!.RemoveAt(i);
-                break;
-            }
+            var index = churnPool.BinarySearch((-lastUse, value));
+            Debug.Assert(index >= 0);
 
-#if NET5_0
-            Debug.Assert(churnPool!.Count < span.Length);
-#else
-            Debug.Assert(churnPool!.Count < length);
-#endif
+            churnPool!.RemoveAt(index);
         }
 
         /// <summary>
