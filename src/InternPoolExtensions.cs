@@ -12,11 +12,11 @@ namespace Ben.Collections.Specialized
         // 32bit hex entity &#xffff0000;
         internal const int MaxCharExpansionSize = 12;
 
-        public static string HtmlEncode(this InternPool pool, string input)
+        public static string HtmlEncode(this IInternPool pool, string input)
             => HtmlEncode(pool, input.AsSpan());
 
 #if NET5_0
-        public static string HtmlEncode(this InternPool pool, ReadOnlySpan<char> input)
+        public static string HtmlEncode(this IInternPool pool, ReadOnlySpan<char> input)
         {
             // Need largest size, can't do multiple rounds of encoding due to https://github.com/dotnet/runtime/issues/45994
             if ((long)input.Length * MaxCharExpansionSize <= InternPool.StackAllocThresholdChars)
@@ -35,9 +35,9 @@ namespace Ben.Collections.Specialized
         }
 
 
-        public static string HtmlEncodeSlower(this InternPool pool, ReadOnlySpan<char> input)
+        public static string HtmlEncodeSlower(this IInternPool pool, ReadOnlySpan<char> input)
 #else
-        public static string HtmlEncode(this InternPool pool, ReadOnlySpan<char> input)
+        public static string HtmlEncode(this IInternPool pool, ReadOnlySpan<char> input)
 #endif
         {
             // Need largest size, can't do multiple rounds of encoding due to https://github.com/dotnet/runtime/issues/45994

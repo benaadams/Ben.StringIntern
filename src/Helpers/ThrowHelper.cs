@@ -77,7 +77,8 @@ namespace System
         array,
         match,
         other,
-        maxSize
+        maxSize,
+        maxLength
     }
 
     //

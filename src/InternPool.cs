@@ -10,6 +10,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 [assembly: InternalsVisibleTo("Ben.StringIntern.Tests")]
 #if NET5
@@ -19,11 +20,29 @@ using System.Text;
 namespace Ben.Collections.Specialized
 {
     [DebuggerDisplay("Count = {Count}")]
-    public class InternPool : ICollection<string>, ISet<string>, IReadOnlyCollection<string>
+    public class InternPool : IInternPool, ICollection<string>, ISet<string>, IReadOnlyCollection<string>
 #if NET5_0
         , IReadOnlySet<string>
 #endif
     {
+        private static SharedInternPool? s_shared;
+
+        public static SharedInternPool Shared
+        { 
+            get
+            {
+                var shared = s_shared;
+                if (shared != null) return shared;
+                return CreateSharedPool();
+            } 
+        }
+
+        private static SharedInternPool CreateSharedPool()
+        {
+            var shared = new SharedInternPool();
+            return Interlocked.CompareExchange(ref s_shared, shared, null) ?? shared;
+        }
+
         /// <summary>Cutoff point for stackallocs. This corresponds to the number of ints.</summary>
         private const int StackAllocThresholdInts = 128;
         internal const int StackAllocThresholdChars = StackAllocThresholdInts * 2;
@@ -51,6 +70,7 @@ namespace Ben.Collections.Specialized
         private int _freeCount;
         private int _version;
         private int _maxCount = -1;
+        private int _maxLength = -1;
 
         private bool _randomisedHash;
 
@@ -86,7 +106,11 @@ namespace Ben.Collections.Specialized
         /// Initializes a new empty instance of the <see cref="InternPool"/> class, 
         /// and is unbounded.
         /// </summary>
-        public InternPool() { }
+        public InternPool() 
+        {
+            _maxLength = int.MaxValue;
+            InternPoolEventSource.Log.IsEnabled();
+        }
 
 
         /// <summary>
@@ -95,7 +119,7 @@ namespace Ben.Collections.Specialized
         /// and is unbounded.
         /// </summary>
         /// <param name="capacity">The initial size of the <see cref="InternPool"/></param>
-        public InternPool(int capacity)
+        public InternPool(int capacity) : this()
         {
             if (capacity < 0)
             {
@@ -116,7 +140,7 @@ namespace Ben.Collections.Specialized
         /// <param name="capacity">The initial size of the <see cref="InternPool"/></param>
         /// <param name="maxCount">The max size of the <see cref="InternPool"/>; 
         /// least recently used entries are evicted when max size is reached and a new item is added.</param>
-        public InternPool(int capacity, int maxCount)
+        public InternPool(int capacity, int maxCount) : this()
         {
             if (capacity < 0)
             {
@@ -138,6 +162,17 @@ namespace Ben.Collections.Specialized
             }
         }
 
+        public InternPool(int capacity, int maxCount, int maxLength)
+            : this(capacity, maxCount)
+        {
+            if (maxLength < 1)
+            {
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.maxLength);
+            }
+
+            _maxLength = maxLength;
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="InternPool"/> class, 
         /// contains deduplicated entries copied from the specified collection, 
@@ -156,7 +191,7 @@ namespace Ben.Collections.Specialized
         /// <param name="collection">The collection whose elements are copied to the new set.</param>
         /// <param name="maxCount">The max size of the <see cref="InternPool"/>; 
         /// least recently used entries are evicted when max size is reached and a new item is added.</param>
-        public InternPool(IEnumerable<string> collection, int maxCount)
+        public InternPool(IEnumerable<string> collection, int maxCount) : this()
         {
             if (collection == null)
             {
@@ -212,6 +247,11 @@ namespace Ben.Collections.Specialized
                 return string.Empty;
             }
 
+            if (asciiValue.Length > _maxLength)
+            {
+                return Encoding.ASCII.GetString(asciiValue);
+            }
+
             char[]? array = null;
             if (asciiValue.Length > StackAllocThresholdChars)
             {
@@ -254,9 +294,18 @@ namespace Ben.Collections.Specialized
                 return string.Empty;
             }
 
+            if (utf8Value.Length * 4 > _maxLength)
+            {
+                return Encoding.UTF8.GetString(utf8Value);
+            }
+
             char[]? array = null;
 
             int count = Encoding.UTF8.GetCharCount(utf8Value);
+            if (count > _maxLength)
+            {
+                return Encoding.UTF8.GetString(utf8Value);
+            }
 
             if (count > StackAllocThresholdChars)
             {
@@ -295,6 +344,7 @@ namespace Ben.Collections.Specialized
         {
             _lastUse += 2;
             if (value.Length == 0) return string.Empty;
+            if (value.Length > _maxLength) return value.ToString();
 
             if (_buckets == null)
             {
@@ -348,6 +398,7 @@ namespace Ben.Collections.Specialized
             _lastUse += 2;
             if (value is null) return null;
             if (value.Length == 0) return string.Empty;
+            if (value.Length > _maxLength) return value;
 
             if (_buckets == null)
             {
@@ -1288,7 +1339,7 @@ namespace Ben.Collections.Specialized
                     var lastUse = entry.LastUse;
                     Debug.Assert(lastUse > 0);
 
-                    if (genPool.Count >= ChurnPoolSize && 
+                    if (genPool.Count >= ChurnPoolSize &&
                         lastUse > currentHigh)
                         continue;
 
@@ -1659,7 +1710,7 @@ namespace Ben.Collections.Specialized
                     hasNull = true;
                     continue;
                 }
-                    
+
                 if (item.Length == 0)
                 {
                     hasEmpty = true;
@@ -1711,6 +1762,7 @@ namespace Ben.Collections.Specialized
         bool IReadOnlySet<string>.SetEquals(IEnumerable<string> other)
             => ((ISet<string>)this).SetEquals(other);
 #endif
+
 
         private struct Entry
         {
