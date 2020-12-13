@@ -11,12 +11,16 @@ namespace Ben.Collections.Specialized
 {
     public class InternPool
     {
+        // Thread-safe shared intern pool; bounded at some capacity, with some max length
+        public static SharedInternPool Shared { get; }
         // Unbounded
         public InternPool();
         // Unbounded with prereserved capacity
         public InternPool(int capacity);
         // Capped size with prereserved capacity, entires evicted based on 2 generation LRU
         public InternPool(int capacity, int maxCount);
+        // Capped size; max pooled string length, with prereserved capacity, entires evicted based on 2 generation LRU
+        public InternPool(int capacity, int maxCount, int maxLength)
         
         // Deduplicated; unbounded
         public InternPool(IEnumerable<string> collection);
@@ -41,11 +45,34 @@ namespace Ben.Collections.Specialized
 }
 ```
 
+## Stats for `Shared` pool
+
+Using the dotnet counters as `InternPool`
+
+Get the proc id
+```
+> dotnet-counters ps
+
+     14600 MyApp MyAppPath\MyApp.exe
+```
+Then query monitor that process
+```
+> dotnet-counters monitor InternPool --process-id 14600
+
+Press p to pause, r to resume, q to quit.
+    Status: Running
+
+[InternPool]
+    Considered (Count / 1 sec)                     4,493
+    Deduped (Count / 1 sec)                        4,492
+    Total Considered                             699,741
+    Total Count                                   36,045
+    Total Deduped                                663,696
+```
+
 ## Todo
 
 - [ ] Add a "low water mark" interned count and evict based over that on LRU at Gen2
-- [ ] Add a max size (string Length) to intern option
-- [ ] Add a `.Shared` global pool that is "threadsafe"
 
 ## Building
 
