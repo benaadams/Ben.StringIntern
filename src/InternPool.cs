@@ -1380,10 +1380,13 @@ namespace Ben.Collections.Specialized
 
 
                 ref Entry entry = ref entries[index];
-                Debug.Assert(entry.LastUse == lastUse);
+                Debug.Assert(Math.Abs(entry.LastUse) == lastUse);
 
-                // Negate lastuse to flag it as in the churn pool
-                entry.LastUse = -entry.LastUse;
+                if (entry.LastUse >= 0)
+                {
+                    // If new entry, negate LastUse to flag it as in the churn pool
+                    entry.LastUse = -entry.LastUse;
+                }
             }
         }
 
