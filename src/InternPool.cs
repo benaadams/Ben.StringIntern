@@ -64,6 +64,7 @@ namespace Ben.Collections.Specialized
 
         private long _lastUse;
         private long _adds;
+        private long _evicted;
 
         private int _count;
         private int _freeList;
@@ -98,6 +99,7 @@ namespace Ben.Collections.Specialized
         /// Count of strings added to the pool, may be larger than <seealso cref="Count"/> if there is a maxCount
         /// </summary>
         public long Added => _adds;
+        public long Evicted => _evicted;
 
         private long GetFirstUse() => _lastUse;
         private long GetMultipleUse() => _lastUse | 1;
@@ -1295,6 +1297,7 @@ namespace Ben.Collections.Specialized
             (_lastRemoved, value) = genPool[0];
             Remove(value);
             genPool.RemoveAt(0);
+            _evicted++;
         }
 
         private void RegenerateChurnPool()

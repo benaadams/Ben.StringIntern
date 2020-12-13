@@ -19,6 +19,9 @@ namespace Ben.Collections.Specialized
         private IncrementingPollingCounter? _dedupedPerSec;
         private PollingCounter? _dedupedTotal;
 
+        private IncrementingPollingCounter? _evictedPerSec;
+        private PollingCounter? _evictedTotal;
+
         private PollingCounter? _poolSize;
 
 
@@ -26,6 +29,7 @@ namespace Ben.Collections.Specialized
         private long Considered { get { UpdateStats(); return _stats.Considered; } }
         private int Count { get { UpdateStats(); return _stats.Count; } }
         private long Deduped { get { UpdateStats(); return _stats.Deduped; } }
+        private long Evicted { get { UpdateStats(); return _stats.Evicted; } }
 
         private long _lastCheck;
         private long _lastUpdate;
@@ -63,6 +67,10 @@ namespace Ben.Collections.Specialized
                 {
                     DisplayName = "Total Deduped",
                 };
+                _evictedTotal ??= new PollingCounter("total-evicted", this, () => Evicted)
+                {
+                    DisplayName = "Total Evicted",
+                };
 
                 _consideredPerSec ??= new IncrementingPollingCounter("considered-per-second", this, () => Considered)
                 {
@@ -72,6 +80,11 @@ namespace Ben.Collections.Specialized
                 _dedupedPerSec ??= new IncrementingPollingCounter("deduped-per-second", this, () => Deduped)
                 {
                     DisplayName = "Deduped"
+                };
+
+                _evictedPerSec ??= new IncrementingPollingCounter("evicted-per-second", this, () => Evicted)
+                {
+                    DisplayName = "Evicted"
                 };
 
                 _poolSize ??= new PollingCounter("count", this, () => Count)
