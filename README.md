@@ -15,12 +15,12 @@ namespace Ben.Collections.Specialized
         public InternPool();
         // Unbounded with prereserved capacity
         public InternPool(int capacity);
-        // Capped size with prereserved capacity, entires evicted based on LRU
+        // Capped size with prereserved capacity, entires evicted based on 2 generation LRU
         public InternPool(int capacity, int maxCount);
         
         // Deduplicated; unbounded
         public InternPool(IEnumerable<string> collection);
-        // Deduplicated; capped size, entires evicted based on LRU
+        // Deduplicated; capped size, entires evicted based on 2 generation LRU
         public InternPool(IEnumerable<string> collection, int maxCount);
     
         [return: NotNullIfNotNull("value")]
@@ -43,15 +43,9 @@ namespace Ben.Collections.Specialized
 
 ## Todo
 
-- [ ] Add more tests
 - [ ] Add a "low water mark" interned count and evict based over that on LRU at Gen2
 - [ ] Add a max size (string Length) to intern option
 - [ ] Add a `.Shared` global pool that is "threadsafe"
-
-## Done
-
-- [x] Add some tests
-- [x] Add a "high water mark" max interned count and evict based on LRU on new add
 
 ## Building
 
