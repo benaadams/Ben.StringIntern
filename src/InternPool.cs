@@ -1255,33 +1255,18 @@ namespace Ben.Collections.Specialized
             Debug.Assert(gen0Pool.Count == 0);
 
             var entries = _entries!;
-            // Clear out the gen1 pool since we are regenerating anyway
-#if NET5_0
-            foreach ((long lastUse, string value) in CollectionsMarshal.AsSpan(gen1Pool))
-            {
-#else
-
-            for (int i = 0; i < gen1Pool.Count; i++)
-            {
-                (long lastUse, string value) = gen1Pool[i];
-#endif
-                var index = FindItemIndex(value);
-                Debug.Assert(index >= 0);
-
-                ref Entry entry = ref entries[index];
-                Debug.Assert(entry.LastUse < 0);
-                Debug.Assert(-entry.LastUse == lastUse);
-
-                // Negate lastuse to flag it as not in the churn pool
-                entry.LastUse = -entry.LastUse;
-            }
-
-            gen1Pool.Clear();
 
             long current0High = long.MinValue;
-            long current1High = long.MinValue;
             long current0Low = long.MaxValue;
+
+            long current1High = long.MinValue;
             long current1Low = long.MaxValue;
+
+            if (gen1Pool.Count > 0)
+            {
+                current1Low = gen1Pool[0].lastUse;
+                current1High = gen1Pool[gen1Pool.Count - 1].lastUse;
+            }
 
             var count = _count;
             for (int i = 0; i < count; i++)
@@ -1290,6 +1275,12 @@ namespace Ben.Collections.Specialized
                 if (entry.Next >= -1)
                 {
                     var gen = GetGeneration(entry.LastUse);
+                    if (gen > 0 && entry.LastUse < 0)
+                    {
+                        // Skip already in pool
+                        continue;
+                    }
+
                     ref long currentHigh = ref gen == 0 ? ref current0High : ref current1High;
                     ref long currentLow = ref gen == 0 ? ref current0Low : ref current1Low;
                     var genPool = gen == 0 ? gen0Pool : gen1Pool;
