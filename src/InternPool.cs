@@ -54,6 +54,13 @@ namespace Ben.Collections.Specialized
 
         private bool _randomisedHash;
 
+        private const int ChurnPoolSize = 32;
+
+        private List<(long lastUse, string value)>? _gen0Pool;
+        private List<(long lastUse, string value)>? _gen1Pool;
+
+        private List<(long lastUse, string value)>? GetPool(int generation) => generation == 0 ? _gen0Pool : _gen1Pool;
+        private static int GetGeneration(long value) => (int)value & 1;
 
         /// <summary>
         /// Gets the number of strings currently in the pool.
@@ -62,15 +69,18 @@ namespace Ben.Collections.Specialized
         /// <summary>
         /// Count of strings checked
         /// </summary>
-        public long Considered => _lastUse;
+        public long Considered => _lastUse >> 1;
         /// <summary>
         /// Count of strings deduplicated
         /// </summary>
-        public long Deduped => _lastUse - _adds;
+        public long Deduped => Considered - _adds;
         /// <summary>
         /// Count of strings added to the pool, may be larger than <seealso cref="Count"/> if there is a maxCount
         /// </summary>
         public long Added => _adds;
+
+        private long GetFirstUse() => _lastUse;
+        private long GetMultipleUse() => _lastUse | 1;
 
         /// <summary>
         /// Initializes a new empty instance of the <see cref="InternPool"/> class, 
@@ -198,7 +208,7 @@ namespace Ben.Collections.Specialized
         {
             if (asciiValue.Length == 0)
             {
-                _lastUse++;
+                _lastUse += 2;
                 return string.Empty;
             }
 
@@ -240,7 +250,7 @@ namespace Ben.Collections.Specialized
         {
             if (utf8Value.Length == 0)
             {
-                _lastUse++;
+                _lastUse += 2;
                 return string.Empty;
             }
 
@@ -283,7 +293,7 @@ namespace Ben.Collections.Specialized
         /// <returns>The interned string.</returns>
         public string Intern(ReadOnlySpan<char> value)
         {
-            _lastUse++;
+            _lastUse += 2;
             if (value.Length == 0) return string.Empty;
 
             if (_buckets == null)
@@ -311,9 +321,9 @@ namespace Ben.Collections.Specialized
                 {
                     if (entry.LastUse < 0)
                     {
-                        RemoveFromChurnPool(entry.Value);
+                        RemoveFromChurnPool(entry.Value, GetGeneration(entry.LastUse));
                     }
-                    entry.LastUse = _lastUse;
+                    entry.LastUse = GetMultipleUse();
                     return entry.Value;
                 }
                 i = entry.Next;
@@ -335,7 +345,7 @@ namespace Ben.Collections.Specialized
         [return: NotNullIfNotNull("value")]
         public string? Intern(string? value)
         {
-            _lastUse++;
+            _lastUse += 2;
             if (value is null) return null;
             if (value.Length == 0) return string.Empty;
 
@@ -364,9 +374,9 @@ namespace Ben.Collections.Specialized
                 {
                     if (entry.LastUse < 0)
                     {
-                        RemoveFromChurnPool(entry.Value);
+                        RemoveFromChurnPool(entry.Value, GetGeneration(entry.LastUse));
                     }
-                    entry.LastUse = _lastUse;
+                    entry.LastUse = GetMultipleUse();
                     return entry.Value;
                 }
                 i = entry.Next;
@@ -1181,7 +1191,7 @@ namespace Ben.Collections.Specialized
                 entry.HashCode = hashCode;
                 entry.Next = bucket - 1; // Value in _buckets is 1-based
                 entry.Value = value;
-                entry.LastUse = _lastUse;
+                entry.LastUse = GetFirstUse();
                 bucket = index + 1;
                 _version++;
             }
@@ -1196,62 +1206,114 @@ namespace Ben.Collections.Specialized
             return value;
         }
 
-        private const int ChurnPoolSize = 16;
-        private List<(long lastUse, string value)>? _churnPool;
-
+        private long _lastRemoved = 0;
+        private bool _emptyGen1 = false;
         private void RemoveLeastRecentlyUsed()
         {
-            var churnPool = (_churnPool ??= new List<(long lastUse, string value)>(ChurnPoolSize));
+            List<(long lastUse, string value)> genPool = (_gen0Pool ??= new List<(long lastUse, string value)>(ChurnPoolSize));
+            //List<(long lastUse, string value)> churnPool = (_gen0Pool ??= new List<(long lastUse, string value)>(ChurnPoolSize));
 
             Debug.Assert(Count != 0);
 
-            if (churnPool.Count == 0)
+            if (genPool.Count == 0)
             {
-                RegenerateChurnPool();
-                Debug.Assert(churnPool.Count != 0);
+                var gen1Pool = _gen1Pool;
+                // See if we can remove a single item from the multiuse pool
+                // before regenerating the single use pool.
+                if (gen1Pool?.Count > 0 &&
+                    (_emptyGen1 || gen1Pool[0].lastUse < _lastRemoved))
+                {
+                    genPool = gen1Pool;
+                }
+                else
+                {
+                    RegenerateChurnPool();
+                    Debug.Assert(_gen0Pool.Count != 0 || _gen1Pool?.Count != 0);
+                }
             }
 
             // Remove lowest
-            (_, string value) = churnPool[0];
+            if (genPool.Count == 0)
+            {
+                genPool = _gen1Pool!;
+                // If we regnerated the pool and Gen0 is still empty,
+                // empty Gen1 before trying to regenerate.
+                _emptyGen1 = true;
+            }
+            string value;
+            (_lastRemoved, value) = genPool[0];
             Remove(value);
-            churnPool.RemoveAt(0);
+            genPool.RemoveAt(0);
         }
 
         private void RegenerateChurnPool()
         {
-            var churnPool = _churnPool!;
-            Debug.Assert(churnPool.Count == 0);
+            _emptyGen1 = false;
+            var gen0Pool = _gen0Pool!;
+            var gen1Pool = (_gen1Pool ??= new List<(long lastUse, string value)>(ChurnPoolSize));
 
-            long currentHigh = long.MinValue;
-            long currentLow = long.MaxValue;
+            Debug.Assert(gen0Pool.Count == 0);
 
             var entries = _entries!;
+            // Clear out the gen1 pool since we are regenerating anyway
+#if NET5_0
+            foreach ((long lastUse, string value) in CollectionsMarshal.AsSpan(gen1Pool))
+            {
+#else
+
+            for (int i = 0; i < gen1Pool.Count; i++)
+            {
+                (long lastUse, string value) = gen1Pool[i];
+#endif
+                var index = FindItemIndex(value);
+                Debug.Assert(index >= 0);
+
+                ref Entry entry = ref entries[index];
+                Debug.Assert(entry.LastUse < 0);
+                Debug.Assert(-entry.LastUse == lastUse);
+
+                // Negate lastuse to flag it as not in the churn pool
+                entry.LastUse = -entry.LastUse;
+            }
+
+            gen1Pool.Clear();
+
+            long current0High = long.MinValue;
+            long current1High = long.MinValue;
+            long current0Low = long.MaxValue;
+            long current1Low = long.MaxValue;
+
             var count = _count;
             for (int i = 0; i < count; i++)
             {
                 ref Entry entry = ref entries[i];
                 if (entry.Next >= -1)
                 {
+                    var gen = GetGeneration(entry.LastUse);
+                    ref long currentHigh = ref gen == 0 ? ref current0High : ref current1High;
+                    ref long currentLow = ref gen == 0 ? ref current0Low : ref current1Low;
+                    var genPool = gen == 0 ? gen0Pool : gen1Pool;
+
                     var lastUse = entry.LastUse;
                     Debug.Assert(lastUse > 0);
 
-                    if (churnPool.Count >= ChurnPoolSize && 
+                    if (genPool.Count >= ChurnPoolSize && 
                         lastUse > currentHigh)
                         continue;
 
-                    Debug.Assert(churnPool.Count <= ChurnPoolSize);
-                    if (churnPool.Count >= ChurnPoolSize)
+                    Debug.Assert(genPool.Count <= ChurnPoolSize);
+                    if (genPool.Count >= ChurnPoolSize)
                     {
                         // Remove from end
-                        churnPool.RemoveAt(churnPool.Count - 1);
-                        currentHigh = churnPool[churnPool.Count - 1].lastUse;
+                        genPool.RemoveAt(genPool.Count - 1);
+                        currentHigh = genPool[genPool.Count - 1].lastUse;
                     }
-                    Debug.Assert(churnPool.Count < ChurnPoolSize);
+                    Debug.Assert(genPool.Count < ChurnPoolSize);
 
                     if (lastUse > currentHigh)
                     {
                         // Insert at end
-                        churnPool.Add((lastUse, entry.Value));
+                        genPool.Add((lastUse, entry.Value));
                         currentHigh = lastUse;
                         if (lastUse < currentLow)
                         {
@@ -1261,46 +1323,66 @@ namespace Ben.Collections.Specialized
                     else if (lastUse < currentLow)
                     {
                         // Insert at start
-                        churnPool.Insert(0, (lastUse, entry.Value));
+                        genPool.Insert(0, (lastUse, entry.Value));
                         currentLow = lastUse;
                     }
                     else
                     {
 #if NET5_0
-                        var span = CollectionsMarshal.AsSpan(churnPool);
+                        var span = CollectionsMarshal.AsSpan(genPool);
                         for (int index = 0; index < span.Length; index++)
                         {
                             (long use, _) = span[index];
 #else
-                        var length = churnPool.Count;
+                        var length = genPool.Count;
                         for (int index = 0; index < length; index++)
                         {
-                            (long use, _) = churnPool[index];
+                            (long use, _) = genPool[index];
 #endif
                             if (use < lastUse) continue;
 
-                            churnPool.Insert(index, (lastUse, entry.Value));
+                            genPool.Insert(index, (lastUse, entry.Value));
                             break;
                         }
 
 #if NET5_0
-                        Debug.Assert(churnPool!.Count > span.Length);
+                        Debug.Assert(genPool!.Count > span.Length);
 #else
-                        Debug.Assert(churnPool!.Count > length);
+                        Debug.Assert(genPool!.Count > length);
 #endif
-                        (currentHigh, _) = churnPool[churnPool.Count - 1];
+                        (currentHigh, _) = genPool[genPool.Count - 1];
                     }
                 }
             }
 
 #if NET5_0
-            foreach ((long lastUse, string value) in CollectionsMarshal.AsSpan(churnPool))
+            foreach ((long lastUse, string value) in CollectionsMarshal.AsSpan(gen0Pool))
             {
 #else
 
-            for (int i = 0; i < churnPool.Count; i++)
+            for (int i = 0; i < gen0Pool.Count; i++)
             {
-                (long lastUse, string value) = churnPool[i];
+                (long lastUse, string value) = gen0Pool[i];
+#endif
+                var index = FindItemIndex(value);
+                Debug.Assert(index >= 0);
+
+
+                ref Entry entry = ref entries[index];
+                Debug.Assert(entry.LastUse == lastUse);
+
+                // Negate lastuse to flag it as in the churn pool
+                entry.LastUse = -entry.LastUse;
+            }
+
+#if NET5_0
+            foreach ((long lastUse, string value) in CollectionsMarshal.AsSpan(gen1Pool))
+            {
+#else
+
+            for (int i = 0; i < gen1Pool.Count; i++)
+            {
+                (long lastUse, string value) = gen1Pool[i];
 #endif
                 var index = FindItemIndex(value);
                 Debug.Assert(index >= 0);
@@ -1314,18 +1396,18 @@ namespace Ben.Collections.Specialized
             }
         }
 
-        private void RemoveFromChurnPool(string value)
+        private void RemoveFromChurnPool(string value, int generation)
         {
             var index = FindItemIndex(value);
             Debug.Assert(index >= 0);
 
+            var churnPool = GetPool(generation)!;
 #if NET5_0
-            var span = CollectionsMarshal.AsSpan(_churnPool);
+            var span = CollectionsMarshal.AsSpan(churnPool);
             for (int i = 0; i < span.Length; i++)
             {
                 (_, string item) = span[i];
 #else
-            var churnPool = _churnPool!;
             var length = churnPool.Count;
             for (int i = 0; i < length; i++)
             {
@@ -1333,14 +1415,14 @@ namespace Ben.Collections.Specialized
 #endif
                 if (item != value) continue;
 
-                _churnPool!.RemoveAt(i);
+                churnPool!.RemoveAt(i);
                 break;
             }
 
 #if NET5_0
-            Debug.Assert(_churnPool!.Count < span.Length);
+            Debug.Assert(churnPool!.Count < span.Length);
 #else
-            Debug.Assert(_churnPool!.Count < length);
+            Debug.Assert(churnPool!.Count < length);
 #endif
         }
 
