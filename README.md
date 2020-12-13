@@ -93,9 +93,11 @@ Press p to pause, r to resume, q to quit.
 [InternPool]
     Considered (Count / 1 sec)                     4,493
     Deduped (Count / 1 sec)                        4,492
+    Evicted (Count / 1 sec)                        4,492
     Total Considered                             699,741
     Total Count                                   36,045
     Total Deduped                                663,696
+    Total Evicted                                 35,426
 ```
 
 ## Todo
