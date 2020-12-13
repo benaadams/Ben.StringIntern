@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading;
 
@@ -45,6 +46,7 @@ namespace Ben.Collections.Specialized
             }
         }
 
+        [return: NotNullIfNotNull("value")]
         public string? Intern(string? value)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;

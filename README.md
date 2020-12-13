@@ -8,6 +8,17 @@ Inspired by this issue being closed: "API request: string.Intern(ReadOnlySpan<ch
 
 ## Example usuage
 
+Collections
+```csharp
+using Ben.Collections;
+
+array = array.ToInternedArray();
+list = list.ToInternedList();
+dict = dict.ToInternedDictionary();
+
+var conDict = dict.ToInternedConcurrentDictionary();
+```
+
 Sql query
 ```csharp
 while (await reader.ReadAsync())
