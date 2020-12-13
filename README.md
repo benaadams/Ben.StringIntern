@@ -6,6 +6,23 @@
 
 Inspired by this issue being closed: "API request: string.Intern(ReadOnlySpan<char> ...)" [#28368](https://github.com/dotnet/runtime/issues/28368)
 
+## Example usuage
+
+Sql query
+```csharp
+while (await reader.ReadAsync())
+{
+    var id = reader.GetInt32(0);
+    
+    // Dedupe the string before you keep it
+    var category = InternPool.Shared.Intern(reader.GetString(1));
+    
+    // ...
+}
+```
+
+## API
+
 ```csharp
 namespace Ben.Collections.Specialized
 {
