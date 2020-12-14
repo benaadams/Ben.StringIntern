@@ -6,6 +6,8 @@
 
 Inspired by this issue being closed: "API request: string.Intern(ReadOnlySpan<char> ...)" [#28368](https://github.com/dotnet/runtime/issues/28368)
 
+Shared pool is capped; with 2 generation LRU eviction and further evictions on Gen2 GC collections.
+
 ## Example usuage
 
 Collections
@@ -91,18 +93,15 @@ Press p to pause, r to resume, q to quit.
     Status: Running
 
 [InternPool]
-    Considered (Count / 1 sec)                     4,493
-    Deduped (Count / 1 sec)                        4,492
-    Evicted (Count / 1 sec)                        4,492
-    Total Considered                             699,741
-    Total Count                                   36,045
-    Total Deduped                                663,696
-    Total Evicted                                 35,426
+    Considered (Count / 1 sec)                     4,497
+    Deduped (Count / 1 sec)                        4,496
+    Evicted (Count / 1 sec)                            0
+    Total Considered                           1,357,121
+    Total Count                                    7,811
+    Total Deduped                              1,316,376
+    Total Evicted                                 32,934
+    Total Gen2 Sweeps                                  3
 ```
-
-## Todo
-
-- [ ] Add a "low water mark" interned count and evict based over that on LRU at Gen2
 
 ## Building
 
