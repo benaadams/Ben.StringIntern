@@ -287,3 +287,5 @@ __pycache__/
 *.xsd.cs
 
 nuget.config
+BenchmarkDotNet.Artifacts
+taxi-fare-train-utf8.csv
