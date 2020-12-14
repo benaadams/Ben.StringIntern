@@ -23,6 +23,7 @@ namespace Ben.Collections.Specialized
         private PollingCounter? _evictedTotal;
 
         private PollingCounter? _poolSize;
+        private PollingCounter? _collections;
 
 
         private long Added { get { UpdateStats(); return _stats.Added; } }
@@ -70,6 +71,10 @@ namespace Ben.Collections.Specialized
                 _evictedTotal ??= new PollingCounter("total-evicted", this, () => Evicted)
                 {
                     DisplayName = "Total Evicted",
+                };
+                _collections ??= new PollingCounter("total-collections", this, () => _pool.Collections)
+                {
+                    DisplayName = "Total Gen2 Sweeps",
                 };
 
                 _consideredPerSec ??= new IncrementingPollingCounter("considered-per-second", this, () => Considered)

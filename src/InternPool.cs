@@ -574,6 +574,9 @@ namespace Ben.Collections.Specialized
         }
 
         public bool Remove(string value)
+            => Remove(value, isEviction: false);
+        
+        private bool Remove(string value, bool isEviction)
         {
             if (value is null || value.Length == 0) return false;
 
@@ -607,10 +610,11 @@ namespace Ben.Collections.Specialized
                         Debug.Assert((StartOfFreeList - _freeList) < 0, "shouldn't underflow because max hashtable length is MaxPrimeArrayLength = 0x7FEFFFFD(2146435069) _freelist underflow threshold 2147483646");
                         entry.Next = StartOfFreeList - _freeList;
 
-                        if (RuntimeHelpers.IsReferenceOrContainsReferences<string>())
+                        if (!isEviction && entry.LastUse < 0)
                         {
-                            entry.Value = default!;
+                            RemoveFromChurnPool(entry.Value, entry.LastUse);
                         }
+                        entry.Value = default!;
 
                         _freeList = i;
                         _freeCount++;
@@ -1259,6 +1263,102 @@ namespace Ben.Collections.Specialized
             return value;
         }
 
+        internal void Trim(TrimLevel trim)
+        {
+            var currentUse = _lastUse;
+
+            long max0Distance;
+            long max1Distance = long.MaxValue;
+
+            switch (trim)
+            {
+                case TrimLevel.Minor:
+                    max0Distance = (Count + (Count >> 1)) << 1;
+                    break;
+                case TrimLevel.Medium:
+                    max0Distance = Count << 1;
+                    max1Distance = (Count * 2) << 1;
+                    break;
+                default:
+                    max0Distance = max1Distance = Count << 1;
+                    break;
+            }
+
+            if (currentUse < max0Distance)
+                return;
+
+            _gen0Pool?.Clear();
+            _gen1Pool?.Clear();
+            Entry[]? entries = _entries;
+            if (entries == null)
+            {
+                return;
+            }
+
+            int count = _count;
+            var buckets = _buckets!;
+            Array.Clear(buckets, 0, buckets.Length);
+
+            var last = 0;
+            var evicted = 0;
+
+            for (int i = 0; i < count; i++)
+            {
+                ref Entry entry = ref entries[i];
+                if (entry.Next < -1)
+                {
+                    continue;
+                }
+
+                var lastUse = entry.LastUse;
+                bool discard = false;
+
+                var distance = currentUse - lastUse;
+                var gen = GetGeneration(lastUse);
+                if (lastUse < 0)
+                {
+                    // Drop if already in churn pool
+                    discard = true;
+                }
+                else if (gen == 0 && distance > max0Distance)
+                {
+                    discard = true;
+                }
+                else if (gen > 0 && distance > max1Distance)
+                {
+                    discard = true;
+                }
+
+                if (discard)
+                {
+                    entry.Value = null!;
+                    evicted++;
+                }
+                else
+                {
+                    if (i != last) 
+                    {
+                        entries[last] = entry;
+                        entry.Value = null!;
+                        entry = ref entries[last];
+                    }
+
+                    ref int bucket = ref GetBucketRef(entry.HashCode);
+                    // Value in _buckets is 1-based
+                    entry.Next = bucket - 1;
+                    bucket = last + 1;
+
+                    last++;
+                }
+            }
+
+            Debug.Assert(evicted == Count - last);
+
+            _count = last;
+            _evicted += evicted;
+            _freeCount = 0;
+        }
+
         private long _lastRemoved = 0;
         private bool _emptyGen1 = false;
         private void RemoveLeastRecentlyUsed()
@@ -1295,7 +1395,7 @@ namespace Ben.Collections.Specialized
             }
             string value;
             (_lastRemoved, value) = genPool[0];
-            Remove(value);
+            Remove(value, isEviction: true);
             genPool.RemoveAt(0);
             _evicted++;
         }
@@ -1766,7 +1866,6 @@ namespace Ben.Collections.Specialized
             => ((ISet<string>)this).SetEquals(other);
 #endif
 
-
         private struct Entry
         {
             public int HashCode;
@@ -1778,6 +1877,15 @@ namespace Ben.Collections.Specialized
             public int Next;
             public string Value;
             public long LastUse;
+        }
+
+        internal enum TrimLevel
+        {
+            Minor = 0,
+            Medium,
+            Major,
+
+            Max = Major
         }
 
         public struct Enumerator : IEnumerator<string>
