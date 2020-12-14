@@ -6,16 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="taxi-fare-train-utf8.csv" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="taxi-fare-train-utf8.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.0.0-preview4" />
   </ItemGroup>
