@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading;
@@ -81,17 +82,36 @@ namespace Ben.Collections.Specialized
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0) return string.Empty;
-            if (Encoding.UTF8.GetMaxCharCount(utf8Value.Length) > MaxLength)
+            if (utf8Value.Length * 4 > MaxLength)
                 return Encoding.UTF8.GetString(utf8Value);
 
-            Span<char> firstChars = stackalloc char[2];
-            Encoding.UTF8.GetChars(utf8Value.Slice(0, 4), firstChars);
+            char[]? array = null;
 
-            var pool = GetPool(firstChars[0]);
+            int count = Encoding.UTF8.GetCharCount(utf8Value);
+            if (count > MaxLength)
+            {
+                return Encoding.UTF8.GetString(utf8Value);
+            }
+
+            if (count > InternPool.StackAllocThresholdChars)
+            {
+                array = ArrayPool<char>.Shared.Rent(count);
+            }
+
+#if NET5_0
+            Span<char> span = array is null ? stackalloc char[InternPool.StackAllocThresholdChars] : array;
+#else
+            Span<char> span = array is null ? stackalloc char[utf8Value.Length] : array;
+#endif
+
+            count = Encoding.UTF8.GetChars(utf8Value, span);
+            span = span.Slice(0, count);
+
+            var pool = GetPool(span[0]);
 
             lock (pool)
             {
-                return pool.InternUtf8(utf8Value);
+                return pool.Intern(span);
             }
         }
 
