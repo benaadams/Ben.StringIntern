@@ -18,7 +18,7 @@ using Microsoft.Toolkit.HighPerformance.Extensions;
 // From Sergio0694 benchmark
 // https://gist.github.com/Sergio0694/c51cb027e6815d7b592484eebe9e3685
 // Needs data 24MB file: https://github.com/dotnet/machinelearning/blob/master/test/data/taxi-fare-train.csv 
-// Saved with UTF8 encoding
+// Saved with UTF8 encoding as taxi-fare-train-utf8.csv
 
 namespace StringPoolCsvParsingBenchmark
 {
