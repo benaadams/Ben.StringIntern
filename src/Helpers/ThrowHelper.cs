@@ -5,14 +5,16 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace System
 {
-    internal static class ThrowHelper
+    internal static partial class ThrowHelper
     {
         private static ArgumentOutOfRangeException GetArgumentArrayPlusOffTooSmall()
         {
             return new ArgumentOutOfRangeException("count plus offset is larger than array length");
         }
 
+#if !NETSTANDARD2_0
         [DoesNotReturn]
+#endif
         internal static void ThrowArgumentException_ArrayPlusOffTooSmall()
         {
             throw GetArgumentArrayPlusOffTooSmall();
@@ -23,31 +25,41 @@ namespace System
             return new ArgumentNullException(GetArgumentName(argument));
         }
 
+#if !NETSTANDARD2_0
         [DoesNotReturn]
+#endif
         internal static void ThrowArgumentNullException(ExceptionArgument argument)
         {
             throw GetArgumentNullException(argument);
         }
 
+#if !NETSTANDARD2_0
         [DoesNotReturn]
+#endif
         internal static void ThrowArgumentOutOfRangeException(ExceptionArgument argument)
         {
             throw new ArgumentOutOfRangeException(GetArgumentName(argument));
         }
 
+#if !NETSTANDARD2_0
         [DoesNotReturn]
+#endif
         internal static void ThrowInvalidOperationException_InvalidOperation_EnumFailedVersion()
         {
             throw new InvalidOperationException("Enum Failed Version");
         }
 
+#if !NETSTANDARD2_0
         [DoesNotReturn]
+#endif
         internal static void ThrowInvalidOperationException_InvalidOperation_EnumOpCantHappen()
         {
             throw new InvalidOperationException("Enum Operation Cannot Happen");
         }
 
+#if !NETSTANDARD2_0
         [DoesNotReturn]
+#endif
         internal static void ThrowInvalidOperationException_ConcurrentOperationsNotSupported()
         {
             throw new InvalidOperationException("Concurrent Operations Not Supported");

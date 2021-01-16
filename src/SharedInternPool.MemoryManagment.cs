@@ -10,31 +10,10 @@ namespace Ben.Collections.Specialized
 {
     public partial class SharedInternPool : IInternPool
     {
-        private enum MemoryPressure
-        {
-            Low,
-            Medium,
-            High
-        }
-
-        private static MemoryPressure GetMemoryPressure()
-        {
-            const double HighPressureThreshold = .90;       // Percent of GC memory pressure threshold we consider "high"
-            const double MediumPressureThreshold = .70;     // Percent of GC memory pressure threshold we consider "medium"
-
-            GCMemoryInfo memoryInfo = GC.GetGCMemoryInfo();
-            if (memoryInfo.MemoryLoadBytes >= memoryInfo.HighMemoryLoadThresholdBytes * HighPressureThreshold)
-            {
-                return MemoryPressure.High;
-            }
-            else if (memoryInfo.MemoryLoadBytes >= memoryInfo.HighMemoryLoadThresholdBytes * MediumPressureThreshold)
-            {
-                return MemoryPressure.Medium;
-            }
-            return MemoryPressure.Low;
-        }
-
-        private class InternPoolCleaner : IThreadPoolWorkItem
+        private class InternPoolCleaner
+#if NET5_0 || NETCOREAPP3_1
+            : IThreadPoolWorkItem
+#endif
         {
             private SharedInternPool _pool;
             private int _isTrimming = 0;
@@ -47,7 +26,7 @@ namespace Ben.Collections.Specialized
                 _pool = pool;
             }
 
-            void IThreadPoolWorkItem.Execute()
+            public void Execute()
             {
                 if (Interlocked.Exchange(ref _isTrimming, 1) == 1)
                     return;
@@ -87,16 +66,19 @@ namespace Ben.Collections.Specialized
                 cleaner = Interlocked.CompareExchange(ref _cleaner, cleaner, null) ?? cleaner;
             }
 
+#if NET5_0 || NETCOREAPP3_1
             ThreadPool.UnsafeQueueUserWorkItem(cleaner, preferLocal: false);
+#else
+            ThreadPool.UnsafeQueueUserWorkItem((o) => ((InternPoolCleaner)o).Execute(), cleaner);
+#endif
             return true;
         }
 
         private bool Trim(InternPool.TrimLevel level)
         {
-            MemoryPressure pressure = GetMemoryPressure();
-
             var pools = _pools;
-
+#if NET5_0 || NETCOREAPP3_1
+            MemoryPressure pressure = GetMemoryPressure();
             if (pressure == MemoryPressure.High)
             {
                 // Under high pressure, release everything
@@ -119,6 +101,7 @@ namespace Ben.Collections.Specialized
             }
             else
             {
+#endif
                 for (int i = 0; i < pools.Length; i++)
                 {
                     var pool = pools[i];
@@ -131,9 +114,37 @@ namespace Ben.Collections.Specialized
 
                     }
                 }
+#if NET5_0 || NETCOREAPP3_1
             }
+#endif
 
             return true;
+        }
+
+#if NET5_0 || NETCOREAPP3_1
+        private static MemoryPressure GetMemoryPressure()
+        {
+            const double HighPressureThreshold = .90;       // Percent of GC memory pressure threshold we consider "high"
+            const double MediumPressureThreshold = .70;     // Percent of GC memory pressure threshold we consider "medium"
+
+            GCMemoryInfo memoryInfo = GC.GetGCMemoryInfo();
+            if (memoryInfo.MemoryLoadBytes >= memoryInfo.HighMemoryLoadThresholdBytes * HighPressureThreshold)
+            {
+                return MemoryPressure.High;
+            }
+            else if (memoryInfo.MemoryLoadBytes >= memoryInfo.HighMemoryLoadThresholdBytes * MediumPressureThreshold)
+            {
+                return MemoryPressure.Medium;
+            }
+            return MemoryPressure.Low;
+        }
+#endif
+
+        private enum MemoryPressure
+        {
+            Low,
+            Medium,
+            High
         }
     }
 }

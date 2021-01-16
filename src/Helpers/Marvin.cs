@@ -206,7 +206,7 @@ namespace System
                 else
                 {
                     partialResult |= (uint)Unsafe.ReadUnaligned<ushort>(ref data);
-                    partialResult = BitOperations.RotateLeft(partialResult, 16);
+                    partialResult = RotateLeft(partialResult, 16);
                 }
             }
 
@@ -218,34 +218,42 @@ namespace System
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Block(ref uint rp0, ref uint rp1)
         {
-            // Intrinsified in mono interpreter
             uint p0 = rp0;
             uint p1 = rp1;
 
             p1 ^= p0;
-            p0 = BitOperations.RotateLeft(p0, 20);
+            p0 = RotateLeft(p0, 20);
 
             p0 += p1;
-            p1 = BitOperations.RotateLeft(p1, 9);
+            p1 = RotateLeft(p1, 9);
 
             p1 ^= p0;
-            p0 = BitOperations.RotateLeft(p0, 27);
+            p0 = RotateLeft(p0, 27);
 
             p0 += p1;
-            p1 = BitOperations.RotateLeft(p1, 19);
+            p1 = RotateLeft(p1, 19);
 
             rp0 = p0;
             rp1 = p1;
         }
 
-        public static ulong DefaultSeed { get; } = GenerateSeed();
+        internal static ulong DefaultSeed { get; } = GenerateSeed();
 
         private static unsafe ulong GenerateSeed()
         {
-            ulong seed = default;
-            var span = MemoryMarshal.CreateSpan(ref Unsafe.As<ulong, byte>(ref seed), sizeof(ulong));
-            RandomNumberGenerator.Fill(span);
+            ulong seed;
+            using (var rnd = RandomNumberGenerator.Create())
+            {
+                var random = new byte[sizeof(ulong)];
+                rnd.GetBytes(random);
+                random.AsSpan().CopyTo(new Span<byte>((byte*)&seed, sizeof(ulong)));
+            }
+
             return seed;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint RotateLeft(uint value, int offset)
+        => (value << offset) | (value >> (32 - offset));
     }
 }

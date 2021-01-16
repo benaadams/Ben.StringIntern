@@ -31,8 +31,8 @@ namespace System.Collections.Generic
                 uint Uint1 = Unsafe.AddByteOffset(ref currentUint, (IntPtr)sizeof(uint));
                 currentUint = ref Unsafe.AddByteOffset(ref currentUint, (IntPtr)(sizeof(uint) * 2));
 
-                hash1 = (BitOperations.RotateLeft(hash1, 5) + hash1) ^ Uint0;
-                hash2 = (BitOperations.RotateLeft(hash2, 5) + hash2) ^ Uint1;
+                hash1 = (RotateLeft(hash1, 5) + hash1) ^ Uint0;
+                hash2 = (RotateLeft(hash2, 5) + hash2) ^ Uint1;
 
             }
 
@@ -40,7 +40,7 @@ namespace System.Collections.Generic
             {
                 length -= 2;
 
-                hash1 = (BitOperations.RotateLeft(hash1, 5) + hash1) ^ currentUint;
+                hash1 = (RotateLeft(hash1, 5) + hash1) ^ currentUint;
 
                 currentChar = ref Unsafe.As<uint, char>(ref Unsafe.AddByteOffset(ref currentUint, (IntPtr)sizeof(uint)));
             }
@@ -48,7 +48,7 @@ namespace System.Collections.Generic
             if (length > 0)
             {
                 uint val = (uint)currentChar;
-                hash2 = (BitOperations.RotateLeft(hash2, 5) + hash2) ^ val;
+                hash2 = (RotateLeft(hash2, 5) + hash2) ^ val;
             }
 
             return (int)(hash1 + (hash2 * 1566083941));
@@ -66,5 +66,9 @@ namespace System.Collections.Generic
             // Multiplication below will not overflow since going from positive Int32 to UInt32.
             return Marvin.ComputeHash32(ref Unsafe.As<char, byte>(ref MemoryMarshal.GetReference(value)), (uint)value.Length * 2 /* in bytes, not chars */, (uint)seed, (uint)(seed >> 32));
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint RotateLeft(uint value, int offset)
+        => (value << offset) | (value >> (32 - offset));
     }
 }

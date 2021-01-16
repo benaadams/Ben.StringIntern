@@ -12,7 +12,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-[assembly: InternalsVisibleTo("Ben.StringIntern.Tests")]
 #if NET5
 [module: SkipLocalsInit()]
 #endif
@@ -111,7 +110,10 @@ namespace Ben.Collections.Specialized
         public InternPool() 
         {
             _maxLength = int.MaxValue;
+
+#if NET5_0 || NETCOREAPP3_1
             InternPoolEventSource.Log.IsEnabled();
+#endif
         }
 
 
@@ -241,6 +243,7 @@ namespace Ben.Collections.Specialized
         /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
         /// <param name="value">The element to add to the intern pool.</param>
         /// <returns>The interned string.</returns>
+#if !NETSTANDARD2_0
         public string InternAscii(ReadOnlySpan<byte> asciiValue)
         {
             if (asciiValue.Length == 0)
@@ -278,8 +281,155 @@ namespace Ben.Collections.Specialized
 
             return value;
         }
+#else
+        public unsafe string InternAscii(ReadOnlySpan<byte> asciiValue)
+        {
+            if (asciiValue.Length == 0)
+            {
+                _lastUse += 2;
+                return string.Empty;
+            }
 
-        /// <summary>Adds the specified ASCII string to the intern pool if it's not already contained.</summary>
+            fixed (byte* pValue = &MemoryMarshal.GetReference(asciiValue))
+            {
+                if (asciiValue.Length > _maxLength)
+                {
+                    return Encoding.ASCII.GetString(pValue, asciiValue.Length);
+                }
+
+                char[]? array = null;
+                if (asciiValue.Length > StackAllocThresholdChars)
+                {
+                    array = ArrayPool<char>.Shared.Rent(asciiValue.Length);
+                }
+
+                Span<char> span = array is null ? stackalloc char[asciiValue.Length] : array;
+
+                int count;
+                fixed (char* pOutput = &MemoryMarshal.GetReference(span))
+                {
+                    count = Encoding.ASCII.GetChars(pValue, asciiValue.Length, pOutput, span.Length);
+                }
+
+                span = span.Slice(0, count);
+
+                string value = Intern(span);
+
+                if (array != null)
+                {
+                    ArrayPool<char>.Shared.Return(array);
+                }
+
+                return value;
+            }
+        }
+#endif
+        /// <summary>Adds the specified <paramref name="encoding"/> string to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The byte sequence to add to the intern pool.</param>
+        /// <param name="encoding">The specific encoding to use.</param>
+        /// <returns>The interned string.</returns>
+        public string Intern(byte[] value, Encoding encoding)
+            => Intern(new ReadOnlySpan<byte>(value), encoding);
+
+        /// <summary>Adds the specified <paramref name="encoding"/> string to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The byte sequence to add to the intern pool.</param>
+        /// <param name="encoding">The specific encoding to use.</param>
+        /// <returns>The interned string.</returns>
+#if !NETSTANDARD2_0
+        public string Intern(ReadOnlySpan<byte> value, Encoding encoding)
+        {
+            if (value.Length == 0)
+            {
+                _lastUse += 2;
+                return string.Empty;
+            }
+
+            if (encoding.GetMaxCharCount(value.Length) > _maxLength)
+            {
+                return encoding.GetString(value);
+            }
+
+            char[]? array = null;
+
+            int count = encoding.GetCharCount(value);
+            if (count > _maxLength)
+            {
+                return encoding.GetString(value);
+            }
+
+            if (count > StackAllocThresholdChars)
+            {
+                array = ArrayPool<char>.Shared.Rent(count);
+            }
+
+#if NET5_0
+            Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
+#else
+            Span<char> span = array is null ? stackalloc char[count] : array;
+#endif
+
+            count = encoding.GetChars(value, span);
+            span = span.Slice(0, count);
+
+            string strValue = Intern(span);
+
+            if (array != null)
+            {
+                ArrayPool<char>.Shared.Return(array);
+            }
+
+            return strValue;
+        }
+#else
+        public unsafe string Intern(ReadOnlySpan<byte> value, Encoding encoding)
+        {
+            if (value.Length == 0)
+            {
+                _lastUse += 2;
+                return string.Empty;
+            }
+
+            fixed (byte* pValue = &MemoryMarshal.GetReference(value))
+            {
+                if (encoding.GetMaxCharCount(value.Length) > _maxLength)
+                {
+                    return encoding.GetString(pValue, value.Length);
+                }
+
+                char[]? array = null;
+
+                int count = encoding.GetCharCount(pValue, value.Length);
+                if (count > _maxLength)
+                {
+                    return encoding.GetString(pValue, value.Length);
+                }
+
+                if (count > StackAllocThresholdChars)
+                {
+                    array = ArrayPool<char>.Shared.Rent(count);
+                }
+
+                Span<char> span = array is null ? stackalloc char[count] : array;
+
+                fixed (char* pOutput = &MemoryMarshal.GetReference(span))
+                {
+                    count = Encoding.ASCII.GetChars(pValue, value.Length, pOutput, span.Length);
+                }
+                span = span.Slice(0, count);
+
+                string strValue = Intern(span);
+
+                if (array != null)
+                {
+                    ArrayPool<char>.Shared.Return(array);
+                }
+
+                return strValue;
+            }
+        }
+#endif
+
+        /// <summary>Adds the specified UTF8 string to the intern pool if it's not already contained.</summary>
         /// <param name="value">The byte sequence to add to the intern pool.</param>
         /// <returns>The interned string.</returns>
         public string InternUtf8(byte[] utf8Value)
@@ -288,6 +438,7 @@ namespace Ben.Collections.Specialized
         /// <summary>Adds the specified UTF8 string to the intern pool if it's not already contained.</summary>
         /// <param name="value">The byte sequence to add to the intern pool.</param>
         /// <returns>The interned string.</returns>
+#if !NETSTANDARD2_0
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0)
@@ -317,7 +468,7 @@ namespace Ben.Collections.Specialized
 #if NET5_0
             Span<char> span = array is null ? stackalloc char[StackAllocThresholdChars] : array;
 #else
-            Span<char> span = array is null ? stackalloc char[utf8Value.Length] : array;
+            Span<char> span = array is null ? stackalloc char[count] : array;
 #endif
 
             count = Encoding.UTF8.GetChars(utf8Value, span);
@@ -332,6 +483,55 @@ namespace Ben.Collections.Specialized
 
             return value;
         }
+#else
+
+        public unsafe string InternUtf8(ReadOnlySpan<byte> utf8Value)
+        {
+            if (utf8Value.Length == 0)
+            {
+                _lastUse += 2;
+                return string.Empty;
+            }
+
+            fixed (byte* pValue = &MemoryMarshal.GetReference(utf8Value))
+            {
+                if (utf8Value.Length * 4 > _maxLength)
+                {
+                    return Encoding.UTF8.GetString(pValue, utf8Value.Length);
+                }
+
+                char[]? array = null;
+
+                int count = Encoding.UTF8.GetCharCount(pValue, utf8Value.Length);
+                if (count > _maxLength)
+                {
+                    return Encoding.UTF8.GetString(pValue, utf8Value.Length);
+                }
+
+                if (count > StackAllocThresholdChars)
+                {
+                    array = ArrayPool<char>.Shared.Rent(count);
+                }
+
+                Span<char> span = array is null ? stackalloc char[count] : array;
+
+                fixed (char* pOutput = &MemoryMarshal.GetReference(span))
+                {
+                    count = Encoding.ASCII.GetChars(pValue, utf8Value.Length, pOutput, span.Length);
+                }
+                span = span.Slice(0, count);
+
+                string value = Intern(span);
+
+                if (array != null)
+                {
+                    ArrayPool<char>.Shared.Return(array);
+                }
+
+                return value;
+            }
+        }
+#endif
 
         /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
         /// <param name="value">The char sequence to add to the intern pool.</param>
@@ -369,7 +569,7 @@ namespace Ben.Collections.Specialized
             while (i >= 0)
             {
                 ref Entry entry = ref entries[i];
-                if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value))
+                if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value.AsSpan()))
                 {
                     if (entry.LastUse < 0)
                     {
@@ -394,7 +594,9 @@ namespace Ben.Collections.Specialized
         /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
         /// <param name="value">The element to add to the intern pool.</param>
         /// <returns>The interned string.</returns>
+#if !NETSTANDARD2_0
         [return: NotNullIfNotNull("value")]
+#endif
         public string? Intern(string? value)
         {
             _lastUse += 2;

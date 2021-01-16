@@ -1,15 +1,56 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net5.0;netcoreapp3.1</TargetFrameworks>
+    <Product>Ben Core</Product>
+    <Title>Ben.StringIntern</Title>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.0.15</Version>
     <LangVersion>latest</LangVersion>
+    <Authors>Ben Adams</Authors>
     <RepositoryUrl>https://github.com/benaadams/Ben.StringIntern</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/benaadams/Ben.StringIntern</PackageProjectUrl>
+    <License>Apache-2.0</License>
+    <RepositoryType>git</RepositoryType>
+    <IncludeSource>true</IncludeSource>
+    <DebugType>embedded</DebugType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp3.1'">
+  <PropertyGroup>
+    <TargetFrameworks>net5.0;netcoreapp3.1;netstandard2.1;netstandard2.0</TargetFrameworks>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.3.37" PrivateAssets="all" />
+    <PackageReference Include="SourceLink.Create.CommandLine" Version="2.8.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)'=='net45'">
+    <PackageReference Include="System.Memory" Version="4.5.4" />
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)'!='net5.0'">
+    <PackageReference Include="System.Reflection.Metadata" Version="5.0.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)'!='net5.0' AND '$(TargetFramework)'!='netcoreapp3.1'">
+    <Compile Remove="InternPoolEventSource.cs" />
+    
+    <PackageReference Include="System.Text.Encodings.Web" Version="5.0.0" />
+  </ItemGroup>
+  
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+  </ItemGroup>
+  
+  <ItemGroup Label="TestInternalsVisibleTo">
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+        <_Parameter1>$(AssemblyName).Tests, PublicKey=a6d206e05440431a</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>

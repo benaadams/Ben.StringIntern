@@ -19,7 +19,7 @@ namespace Ben.StringIntern.Tests
             {
                 var array = Enumerable.Range(1, i).Select(x => (char)x).ToArray();
                 string str = new string(array);
-                ReadOnlySpan<char> charSpan = str;
+                ReadOnlySpan<char> charSpan = str.AsSpan();
                 ReadOnlySpan<byte> asciiSpan = Encoding.ASCII.GetBytes(str);
                 ReadOnlySpan<byte> utf8Span = Encoding.UTF8.GetBytes(str);
 
