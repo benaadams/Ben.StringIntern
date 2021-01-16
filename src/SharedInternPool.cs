@@ -127,7 +127,7 @@ namespace Ben.Collections.Specialized
             }
         }
 #else
-        public unsafe string InternUtf8(ReadOnlySpan<byte> value, Encoding encoding)
+        public unsafe string Intern(ReadOnlySpan<byte> value, Encoding encoding)
         {
             fixed (byte* pValue = &MemoryMarshal.GetReference(value))
             {
