@@ -13,6 +13,10 @@ namespace Ben.StringIntern.Tests
 {
     public class HtmlEncoding
     {
+        private const int StackAllocThresholdInts = 128;
+        internal const int StackAllocThresholdChars = StackAllocThresholdInts * 2;
+        internal const int MaxCharExpansionSize = 10;
+
         [Fact]
         public void ShortHtmlIsEncoded()
         {
@@ -51,7 +55,7 @@ namespace Ben.StringIntern.Tests
         [Fact]
         public void LargeHtmlIsEncoded()
         {
-            char[] array = new char[InternPool.StackAllocThresholdChars / InternPoolExtensions.MaxCharExpansionSize + InternPoolExtensions.MaxCharExpansionSize + 1];
+            char[] array = new char[StackAllocThresholdChars / MaxCharExpansionSize + MaxCharExpansionSize + 1];
 
             var unicode = "𠜎";
 

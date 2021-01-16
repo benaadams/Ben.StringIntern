@@ -4,6 +4,7 @@
 using System;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
@@ -48,11 +49,13 @@ namespace Ben.Collections.Specialized
             }
         }
 
+#if !NETSTANDARD2_0
         [return: NotNullIfNotNull("value")]
+#endif
         public string? Intern(string? value)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
-            if (value.Length > MaxLength) return value;
+            if (value!.Length > MaxLength) return value;
 
             var firstChar = value[0];
             var pool = GetPool(firstChar);
@@ -66,10 +69,15 @@ namespace Ben.Collections.Specialized
         public unsafe string InternAscii(ReadOnlySpan<byte> asciiValue)
         {
             if (asciiValue.Length == 0) return string.Empty;
+#if !NETSTANDARD2_0
             if (asciiValue.Length > MaxLength) return Encoding.ASCII.GetString(asciiValue);
-
-            char firstChar;
-            Encoding.ASCII.GetChars(asciiValue.Slice(0, 1), new Span<char>(&firstChar, 1));
+#else
+            fixed (byte* pValue = &MemoryMarshal.GetReference(asciiValue))
+            {
+                if (asciiValue.Length > MaxLength) return Encoding.ASCII.GetString(pValue, asciiValue.Length);
+            }
+#endif
+            char firstChar = (char)asciiValue[0];
 
             var pool = GetPool(firstChar);
 
@@ -79,6 +87,7 @@ namespace Ben.Collections.Specialized
             }
         }
 
+#if !NETSTANDARD2_0
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0) return string.Empty;
@@ -114,6 +123,46 @@ namespace Ben.Collections.Specialized
                 return pool.Intern(span);
             }
         }
+#else
+        public unsafe string InternUtf8(ReadOnlySpan<byte> utf8Value)
+        {
+            fixed (byte* pValue = &MemoryMarshal.GetReference(utf8Value))
+            {
+                if (utf8Value.Length == 0) return string.Empty;
+                if (utf8Value.Length * 4 > MaxLength)
+                    return Encoding.UTF8.GetString(pValue, utf8Value.Length);
+
+                char[]? array = null;
+
+                int count = Encoding.UTF8.GetCharCount(pValue, utf8Value.Length);
+                if (count > MaxLength)
+                {
+                    return Encoding.UTF8.GetString(pValue, utf8Value.Length);
+                }
+
+                if (count > InternPool.StackAllocThresholdChars)
+                {
+                    array = ArrayPool<char>.Shared.Rent(count);
+                }
+
+                Span<char> span = array is null ? stackalloc char[utf8Value.Length] : array;
+
+                fixed (char* pOutput = &MemoryMarshal.GetReference(span))
+                {
+                    count = Encoding.UTF8.GetChars(pValue, utf8Value.Length, pOutput, span.Length);
+                }
+
+                span = span.Slice(0, count);
+
+                var pool = GetPool(span[0]);
+
+                lock (pool)
+                {
+                    return pool.Intern(span);
+                }
+            }
+        }
+#endif
 
         private InternPool GetPool(char firstChar)
         {
