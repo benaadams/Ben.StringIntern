@@ -43,9 +43,12 @@ namespace Ben.Collections.Specialized
             var firstChar = value[0];
             var pool = GetPool(firstChar);
 
+            // Calcuate hash outside lock
+            var hashCode = pool.GetHashCode(value, out bool randomisedHash);
+
             lock (pool)
             {
-                return pool.Intern(value);
+                return pool.Intern(hashCode, randomisedHash, value);
             }
         }
 
@@ -60,9 +63,13 @@ namespace Ben.Collections.Specialized
             var firstChar = value[0];
             var pool = GetPool(firstChar);
 
+            // Calcuate hash outside lock
+            var span = value.AsSpan();
+            var hashCode = pool.GetHashCode(span, out bool randomisedHash);
+
             lock (pool)
             {
-                return pool.Intern(value);
+                return pool.Intern(hashCode, randomisedHash, span);
             }
         }
 
@@ -121,9 +128,12 @@ namespace Ben.Collections.Specialized
 
             var pool = GetPool(span[0]);
 
+            // Calcuate hash outside lock
+            var hashCode = pool.GetHashCode(span, out bool randomisedHash);
+
             lock (pool)
             {
-                return pool.Intern(span);
+                return pool.Intern(hashCode, randomisedHash, span);
             }
         }
 #else
@@ -159,9 +169,12 @@ namespace Ben.Collections.Specialized
 
                 var pool = GetPool(span[0]);
 
+                // Calcuate hash outside lock
+                var hashCode = pool.GetHashCode(span, out bool randomisedHash);
+
                 lock (pool)
                 {
-                    return pool.Intern(span);
+                    return pool.Intern(hashCode, randomisedHash, span);
                 }
             }
         }
@@ -198,9 +211,12 @@ namespace Ben.Collections.Specialized
 
             var pool = GetPool(span[0]);
 
+            // Calcuate hash outside lock
+            var hashCode = pool.GetHashCode(span, out bool randomisedHash);
+
             lock (pool)
             {
-                return pool.Intern(span);
+                return pool.Intern(hashCode, randomisedHash, span);
             }
         }
 #else
@@ -236,9 +252,12 @@ namespace Ben.Collections.Specialized
 
                 var pool = GetPool(span[0]);
 
+                // Calcuate hash outside lock
+                var hashCode = pool.GetHashCode(span, out bool randomisedHash);
+
                 lock (pool)
                 {
-                    return pool.Intern(span);
+                    return pool.Intern(hashCode, randomisedHash, span);
                 }
             }
         }
