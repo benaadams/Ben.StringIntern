@@ -17,6 +17,13 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.301
+    
+    - name: Clean
+      run: dotnet clean -v m
+
+    - name: Clear cache
+      run: dotnet nuget locals all --clear
+
     - name: Install dependencies
       run: dotnet restore
     - name: Build
