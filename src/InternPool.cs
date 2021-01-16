@@ -532,6 +532,66 @@ namespace Ben.Collections.Specialized
             }
         }
 #endif
+        internal int GetHashCode(ReadOnlySpan<char> value, out bool randomisedHash)
+        {
+            randomisedHash = _randomisedHash;
+            return randomisedHash ? value.GetRandomizedHashCode() : value.GetNonRandomizedHashCode();
+        }
+
+        /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
+        /// <param name="value">The char sequence to add to the intern pool.</param>
+        /// <returns>The interned string.</returns>
+        internal string Intern(int hashCode, bool randomisedHash, ReadOnlySpan<char> value)
+        {
+            _lastUse += 2;
+            if (value.Length == 0) return string.Empty;
+            if (value.Length > _maxLength) return value.ToString();
+
+            if (_buckets == null)
+            {
+                Initialize(0);
+            }
+            Debug.Assert(_buckets != null);
+
+            Entry[]? entries = _entries;
+            Debug.Assert(entries != null, "expected entries to be non-null");
+
+            uint collisionCount = 0;
+            ref int bucket = ref Unsafe.NullRef<int>();
+
+            if (randomisedHash != _randomisedHash)
+            {
+                // Precalcuated hash mode changed before the lock was taken
+                hashCode = _randomisedHash ? value.GetRandomizedHashCode() : value.GetNonRandomizedHashCode();
+            }
+
+            bucket = ref GetBucketRef(hashCode);
+            int i = bucket - 1; // Value in _buckets is 1-based
+
+            while (i >= 0)
+            {
+                ref Entry entry = ref entries[i];
+                if (entry.HashCode == hashCode && value.SequenceEqual(entry.Value.AsSpan()))
+                {
+                    if (entry.LastUse < 0)
+                    {
+                        RemoveFromChurnPool(entry.Value, entry.LastUse);
+                    }
+                    entry.LastUse = GetMultipleUse();
+                    return entry.Value;
+                }
+                i = entry.Next;
+
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    // The chain of entries forms a loop, which means a concurrent update has happened.
+                    ThrowHelper.ThrowInvalidOperationException_ConcurrentOperationsNotSupported();
+                }
+            }
+
+            return AddNewEntry(value.ToString(), ref entries, hashCode, collisionCount, ref bucket);
+        }
 
         /// <summary>Adds the specified element to the intern pool if it's not already contained.</summary>
         /// <param name="value">The char sequence to add to the intern pool.</param>
