@@ -10,7 +10,7 @@ namespace Ben.Collections.Specialized
     public static class InternPoolExtensions
     {
         // 32bit hex entity &#xffff0000;
-        internal const int MaxCharExpansionSize = 12;
+        internal const int MaxCharExpansionSize = 10;
 
         public static string HtmlEncode(this IInternPool pool, string input)
             => HtmlEncode(pool, input.AsSpan());
