@@ -41,7 +41,7 @@ namespace Ben.Collections
             Span<char> span = array is null ? stackalloc char[count] : array;
 #endif
             sb.CopyTo(0, span, count);
-            span = array.AsSpan(0, count);
+            span = span.Slice(0, count);
 #else
             array = ArrayPool<char>.Shared.Rent(count);
             sb.CopyTo(0, array, 0, count);
