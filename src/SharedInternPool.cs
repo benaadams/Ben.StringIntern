@@ -122,7 +122,13 @@ namespace Ben.Collections.Specialized
             // Calcuate hash outside lock
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-            return InternSynchronized(pool, hashCode, randomisedHash, span);
+            var result = InternSynchronized(pool, hashCode, randomisedHash, span);
+            if (array is not null)
+            {
+                ArrayPool<char>.Shared.Return(array);
+            }
+
+            return result;
         }
 #else
         public unsafe string Intern(ReadOnlySpan<byte> value, Encoding encoding)
@@ -155,7 +161,13 @@ namespace Ben.Collections.Specialized
                 // Calcuate hash outside lock
                 var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-                return InternSynchronized(pool, hashCode, randomisedHash, span);
+                var result = InternSynchronized(pool, hashCode, randomisedHash, span);
+                if (array is not null)
+                {
+                    ArrayPool<char>.Shared.Return(array);
+                }
+
+                return result;
             }
         }
 #endif
@@ -189,7 +201,13 @@ namespace Ben.Collections.Specialized
             // Calcuate hash outside lock
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-            return InternSynchronized(pool, hashCode, randomisedHash, span);
+            var result = InternSynchronized(pool, hashCode, randomisedHash, span);
+            if (array is not null)
+            {
+                ArrayPool<char>.Shared.Return(array);
+            }
+
+            return result;
         }
 #else
         public unsafe string InternUtf8(ReadOnlySpan<byte> utf8Value)
@@ -222,7 +240,13 @@ namespace Ben.Collections.Specialized
                 // Calcuate hash outside lock
                 var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-                return InternSynchronized(pool, hashCode, randomisedHash, span);
+                var result = InternSynchronized(pool, hashCode, randomisedHash, span);
+                if (array is not null)
+                {
+                    ArrayPool<char>.Shared.Return(array);
+                }
+
+                return result;
             }
         }
 #endif
