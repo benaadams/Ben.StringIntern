@@ -57,8 +57,10 @@ namespace Ben.Collections.Specialized
 #endif
         public string? Intern(string? value)
         {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            if (value!.Length > MaxLength) return value;
+            if (value is null) return null;
+            if (value.Length == 0) return string.Empty;
+
+            if (value.Length > MaxLength) return value;
 
             var firstChar = value[0];
             var pool = GetPool(firstChar);
