@@ -46,10 +46,7 @@ namespace Ben.Collections.Specialized
             // Calcuate hash outside lock
             var hashCode = pool.GetHashCode(value, out bool randomisedHash);
 
-            lock (pool)
-            {
-                return pool.Intern(hashCode, randomisedHash, value);
-            }
+            return InternSynchronized(pool, hashCode, randomisedHash, value);
         }
 
 #if !NETSTANDARD2_0
@@ -69,10 +66,7 @@ namespace Ben.Collections.Specialized
             var span = value.AsSpan();
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-            lock (pool)
-            {
-                return pool.Intern(hashCode, randomisedHash, span);
-            }
+            return InternSynchronized(pool, hashCode, randomisedHash, span);
         }
 
         public unsafe string InternAscii(ReadOnlySpan<byte> asciiValue)
@@ -128,10 +122,7 @@ namespace Ben.Collections.Specialized
             // Calcuate hash outside lock
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-            lock (pool)
-            {
-                return pool.Intern(hashCode, randomisedHash, span);
-            }
+            return InternSynchronized(pool, hashCode, randomisedHash, span);
         }
 #else
         public unsafe string Intern(ReadOnlySpan<byte> value, Encoding encoding)
@@ -164,10 +155,7 @@ namespace Ben.Collections.Specialized
                 // Calcuate hash outside lock
                 var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-                lock (pool)
-                {
-                    return pool.Intern(hashCode, randomisedHash, span);
-                }
+                return InternSynchronized(pool, hashCode, randomisedHash, span);
             }
         }
 #endif
@@ -201,10 +189,7 @@ namespace Ben.Collections.Specialized
             // Calcuate hash outside lock
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-            lock (pool)
-            {
-                return pool.Intern(hashCode, randomisedHash, span);
-            }
+            return InternSynchronized(pool, hashCode, randomisedHash, span);
         }
 #else
         public unsafe string InternUtf8(ReadOnlySpan<byte> utf8Value)
@@ -237,13 +222,18 @@ namespace Ben.Collections.Specialized
                 // Calcuate hash outside lock
                 var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
-                lock (pool)
-                {
-                    return pool.Intern(hashCode, randomisedHash, span);
-                }
+                return InternSynchronized(pool, hashCode, randomisedHash, span);
             }
         }
 #endif
+
+        private static string InternSynchronized(InternPool pool, int hashCode, bool randomisedHash, ReadOnlySpan<char> span)
+        {
+            lock (pool)
+            {
+                return pool.Intern(hashCode, randomisedHash, span);
+            }
+        }
 
         private InternPool GetPool(char firstChar)
         {
