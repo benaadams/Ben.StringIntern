@@ -1,8 +1,12 @@
 ﻿// Copyright (c) Ben Adams. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text;
+
 using Ben.Collections.Specialized;
 
 namespace Ben.Collections
@@ -20,6 +24,37 @@ namespace Ben.Collections
             }
 
             return newArray;
+        }
+
+        public static string Intern(this StringBuilder sb)
+        {
+            var count = sb.Length;
+            char[]? array = null;
+#if NET5_0 || NETCOREAPP3_1
+            if (count > InternPool.StackAllocThresholdChars)
+            {
+                array = ArrayPool<char>.Shared.Rent(count);
+            }
+#if NET5_0
+            Span<char> span = array is null ? stackalloc char[InternPool.StackAllocThresholdChars] : array;
+#else
+            Span<char> span = array is null ? stackalloc char[count] : array;
+#endif
+            sb.CopyTo(0, span, count);
+            span = array.AsSpan(0, count);
+#else
+            array = ArrayPool<char>.Shared.Rent(count);
+            sb.CopyTo(0, array, 0, count);
+
+            Span<char> span = array.AsSpan(0, count);
+#endif
+            var result = InternPool.Shared.Intern(span);
+            if (array is not null)
+            {
+                ArrayPool<char>.Shared.Return(array);
+            }
+
+            return result;
         }
 
         public static List<string> ToInternedList(this List<string> list)
