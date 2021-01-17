@@ -101,16 +101,11 @@ namespace Ben.Collections.Specialized
         public string Intern(ReadOnlySpan<byte> value, Encoding encoding)
         {
             if (value.Length == 0) return string.Empty;
-            if (encoding.GetMaxCharCount(value.Length) > MaxLength)
+            int count = encoding.GetMaxCharCount(value.Length);
+            if (count > MaxLength)
                 return encoding.GetString(value);
 
             char[]? array = null;
-
-            int count = encoding.GetCharCount(value);
-            if (count > MaxLength)
-            {
-                return encoding.GetString(value);
-            }
 
             if (count > InternPool.StackAllocThresholdChars)
             {
@@ -142,16 +137,11 @@ namespace Ben.Collections.Specialized
             fixed (byte* pValue = &MemoryMarshal.GetReference(value))
             {
                 if (value.Length == 0) return string.Empty;
-                if (encoding.GetMaxCharCount(value.Length) > MaxLength)
+                int count = encoding.GetMaxCharCount(value.Length);
+                if (count > MaxLength)
                     return encoding.GetString(pValue, value.Length);
 
                 char[]? array = null;
-
-                int count = encoding.GetCharCount(pValue, value.Length);
-                if (count > MaxLength)
-                {
-                    return encoding.GetString(pValue, value.Length);
-                }
 
                 if (count > InternPool.StackAllocThresholdChars)
                 {
@@ -184,16 +174,11 @@ namespace Ben.Collections.Specialized
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0) return string.Empty;
-            if (utf8Value.Length * 4 > MaxLength)
+            int count = Encoding.UTF8.GetMaxCharCount(utf8Value.Length);
+            if (count > MaxLength)
                 return Encoding.UTF8.GetString(utf8Value);
 
             char[]? array = null;
-
-            int count = Encoding.UTF8.GetCharCount(utf8Value);
-            if (count > MaxLength)
-            {
-                return Encoding.UTF8.GetString(utf8Value);
-            }
 
             if (count > InternPool.StackAllocThresholdChars)
             {
@@ -225,16 +210,11 @@ namespace Ben.Collections.Specialized
             fixed (byte* pValue = &MemoryMarshal.GetReference(utf8Value))
             {
                 if (utf8Value.Length == 0) return string.Empty;
-                if (utf8Value.Length * 4 > MaxLength)
+                int count = Encoding.UTF8.GetMaxCharCount(utf8Value.Length);
+                if (count > MaxLength)
                     return Encoding.UTF8.GetString(pValue, utf8Value.Length);
 
                 char[]? array = null;
-
-                int count = Encoding.UTF8.GetCharCount(pValue, utf8Value.Length);
-                if (count > MaxLength)
-                {
-                    return Encoding.UTF8.GetString(pValue, utf8Value.Length);
-                }
 
                 if (count > InternPool.StackAllocThresholdChars)
                 {
