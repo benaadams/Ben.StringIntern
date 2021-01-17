@@ -49,7 +49,7 @@ namespace Ben.Collections
             Span<char> span = array.AsSpan(0, count);
 #endif
             var result = InternPool.Shared.Intern(span);
-            if (array is not null)
+            if (array != null)
             {
                 ArrayPool<char>.Shared.Return(array);
             }

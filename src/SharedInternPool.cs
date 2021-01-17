@@ -123,7 +123,7 @@ namespace Ben.Collections.Specialized
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
             var result = InternSynchronized(pool, hashCode, randomisedHash, span);
-            if (array is not null)
+            if (array != null)
             {
                 ArrayPool<char>.Shared.Return(array);
             }
@@ -162,7 +162,7 @@ namespace Ben.Collections.Specialized
                 var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
                 var result = InternSynchronized(pool, hashCode, randomisedHash, span);
-                if (array is not null)
+                if (array != null)
                 {
                     ArrayPool<char>.Shared.Return(array);
                 }
@@ -202,7 +202,7 @@ namespace Ben.Collections.Specialized
             var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
             var result = InternSynchronized(pool, hashCode, randomisedHash, span);
-            if (array is not null)
+            if (array != null)
             {
                 ArrayPool<char>.Shared.Return(array);
             }
@@ -241,7 +241,7 @@ namespace Ben.Collections.Specialized
                 var hashCode = pool.GetHashCode(span, out bool randomisedHash);
 
                 var result = InternSynchronized(pool, hashCode, randomisedHash, span);
-                if (array is not null)
+                if (array != null)
                 {
                     ArrayPool<char>.Shared.Return(array);
                 }
