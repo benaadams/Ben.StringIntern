@@ -17,18 +17,21 @@ using Ben.Collections;
 array = array.ToInternedArray();
 list = list.ToInternedList();
 dict = dict.ToInternedDictionary();
+string val = stringBuilder.Intern();
 
 var conDict = dict.ToInternedConcurrentDictionary();
 ```
 
 Sql query
 ```csharp
+using static Ben.Collections.Specialized.StringCache;
+
 while (await reader.ReadAsync())
 {
     var id = reader.GetInt32(0);
     
     // Dedupe the string before you keep it
-    var category = InternPool.Shared.Intern(reader.GetString(1));
+    var category = Intern(reader.GetString(1));
     
     // ...
 }
