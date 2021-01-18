@@ -42,12 +42,21 @@ namespace StringPoolCsvParsingBenchmark
         private readonly StringPool stringPool2 = new StringPool();
         private readonly InternPool internPool = new InternPool();
 
+        [Params("Taxi-data", "2M-Unique", "20k-Values")]
+        public string Dataset { get; set; }
+
         [GlobalSetup]
         public void Setup()
         {
             // Source: https://github.com/dotnet/machinelearning/blob/master/test/data/taxi-fare-train.csv 
             // Saved with UTF8 encoding
-            using Stream stream = File.OpenRead("taxi-fare-train-utf8.csv");
+            using Stream stream = Dataset switch
+            {
+                "Taxi-data" => File.OpenRead("taxi-fare-train-utf8.csv"),
+                "2M-Unique" => File.OpenRead("2-million-unique.csv"),
+                "20k-Values" => File.OpenRead("2-million-20k-values.csv"),
+                _ => throw new InvalidDataException()
+            };
 
             this.sourceMemory = MemoryOwner<byte>.Allocate((int)stream.Length);
 
