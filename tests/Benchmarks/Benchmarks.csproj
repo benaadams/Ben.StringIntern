@@ -14,4 +14,10 @@
     <ProjectReference Include="..\..\src\Ben.StringIntern.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="taxi-fare-train-utf8.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

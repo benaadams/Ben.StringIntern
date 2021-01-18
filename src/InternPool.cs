@@ -10,6 +10,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Unicode;
 using System.Threading;
 
 #if NET5
@@ -438,7 +439,7 @@ namespace Ben.Collections.Specialized
         /// <summary>Adds the specified UTF8 string to the intern pool if it's not already contained.</summary>
         /// <param name="value">The byte sequence to add to the intern pool.</param>
         /// <returns>The interned string.</returns>
-#if !NETSTANDARD2_0
+#if NET5_0 || NETCOREAPP3_1
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0)
@@ -447,18 +448,13 @@ namespace Ben.Collections.Specialized
                 return string.Empty;
             }
 
-            if (utf8Value.Length * 4 > _maxLength)
+            int count = utf8Value.Length * 2; // 2 x length for invalid sequence encoding
+            if (count > _maxLength)
             {
                 return Encoding.UTF8.GetString(utf8Value);
             }
 
             char[]? array = null;
-
-            int count = Encoding.UTF8.GetCharCount(utf8Value);
-            if (count > _maxLength)
-            {
-                return Encoding.UTF8.GetString(utf8Value);
-            }
 
             if (count > StackAllocThresholdChars)
             {
@@ -470,8 +466,8 @@ namespace Ben.Collections.Specialized
 #else
             Span<char> span = array is null ? stackalloc char[count] : array;
 #endif
+            Utf8.ToUtf16(utf8Value, span, out _, out count);
 
-            count = Encoding.UTF8.GetChars(utf8Value, span);
             span = span.Slice(0, count);
 
             string value = Intern(span);
@@ -484,7 +480,6 @@ namespace Ben.Collections.Specialized
             return value;
         }
 #else
-
         public unsafe string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0)
@@ -495,7 +490,7 @@ namespace Ben.Collections.Specialized
 
             fixed (byte* pValue = &MemoryMarshal.GetReference(utf8Value))
             {
-                if (utf8Value.Length * 4 > _maxLength)
+                if (utf8Value.Length * 2 > _maxLength)
                 {
                     return Encoding.UTF8.GetString(pValue, utf8Value.Length);
                 }
