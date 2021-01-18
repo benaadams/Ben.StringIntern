@@ -279,7 +279,7 @@ namespace Ben.Collections.Specialized
 
         private InternPool CreatePool(int poolIndex)
         {
-            var pool = new InternPool(1, 10_000, MaxLength);
+            var pool = new InternPool(1, 2000, MaxLength);
             pool = Interlocked.CompareExchange(ref _pools[poolIndex], pool, null) ?? pool;
 
             if (Interlocked.Exchange(ref _callbackCreated, 1) != 1)
