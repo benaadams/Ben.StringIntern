@@ -41,21 +41,6 @@ namespace Ben.Collections.Specialized
 
         internal long Collections => _cleaner?.Collections ?? 0;
 
-        /// <summary>
-        /// This is the static function that is called from the gen2 GC callback.
-        /// The input object is the instance we want the callback on.
-        /// </summary>
-        /// <remarks>
-        /// The reason that we make this function static and take the instance as a parameter is that
-        /// we would otherwise root the instance to the Gen2GcCallback object, leaking the instance even when
-        /// the application no longer needs it.
-        /// </remarks>
-        private static bool Gen2GcCallbackFunc(object target)
-        {
-            // Enqueue trim to ThreadPool
-            return ((SharedInternPool)target).EnqueueTrim();
-        }
-
         private InternPoolCleaner? _cleaner;
         private bool EnqueueTrim()
         {
