@@ -106,17 +106,17 @@ namespace StringPoolCsvParsingBenchmark
         }
 
         [Benchmark]
-        public void StringIntern_Shared()
+        public void StringIntern_Instance()
         {
-            var parser = new InternSharedParser();
+            var parser = new InternParser(this.internPool);
 
             Parse(ref parser);
         }
 
         [Benchmark]
-        public void StringIntern_Instance()
+        public void StringIntern_Shared()
         {
-            var parser = new InternParser(this.internPool);
+            var parser = new InternSharedParser();
 
             Parse(ref parser);
         }
