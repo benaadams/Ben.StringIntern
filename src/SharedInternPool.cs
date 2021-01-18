@@ -279,7 +279,7 @@ namespace Ben.Collections.Specialized
 
             if (Interlocked.Exchange(ref _callbackCreated, 1) != 1)
             {
-                Gen2GcCallback.Register(Gen2GcCallbackFunc, this);
+                Gen2GcCallback.Register(self => ((SharedInternPool)self).EnqueueTrim(), this);
             }
 
             return pool;
