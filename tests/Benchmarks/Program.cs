@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Buffers.Text;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -42,7 +43,7 @@ namespace StringPoolCsvParsingBenchmark
         private readonly StringPool stringPool2 = new StringPool();
         private readonly InternPool internPool = new InternPool();
 
-        [Params("Taxi-data", "2M-Unique", "2M (20k-Values)")]
+        [Params("Taxi-data", "2M-Unique", "2M (20k-Values)", "2M-Unique-Long", "2M (20k-Values-Long)")]
         public string Dataset { get; set; }
 
         [GlobalSetup]
@@ -50,11 +51,16 @@ namespace StringPoolCsvParsingBenchmark
         {
             // Source: https://github.com/dotnet/machinelearning/blob/master/test/data/taxi-fare-train.csv 
             // Saved with UTF8 encoding
+
+            // Create the other data files so as not to add them to git
+            CreateData();
             using Stream stream = Dataset switch
             {
                 "Taxi-data" => File.OpenRead("taxi-fare-train-utf8.csv"),
                 "2M-Unique" => File.OpenRead("2-million-unique.csv"),
                 "2M (20k-Values)" => File.OpenRead("2-million-20k-values.csv"),
+                "2M-Unique-Long" => File.OpenRead("2-million-unique-long.csv"),
+                "2M (20k-Values-Long)" => File.OpenRead("2-million-20k-values-long.csv"),
                 _ => throw new InvalidDataException()
             };
 
@@ -89,7 +95,7 @@ namespace StringPoolCsvParsingBenchmark
             Parse(ref parser);
         }
 
-        [Benchmark]
+        //[Benchmark]
         public void MTHP_StringPool_Stackalloc()
         {
             var parser = new StringPoolCustomParser(this.stringPool1);
@@ -97,7 +103,7 @@ namespace StringPoolCsvParsingBenchmark
             Parse(ref parser);
         }
 
-        [Benchmark]
+        //[Benchmark]
         public void MTHP_StringPool_Encoder()
         {
             var parser = new StringPoolEmbeddedParser(this.stringPool2);
@@ -187,6 +193,84 @@ namespace StringPoolCsvParsingBenchmark
                                 break;
                         }
                     }
+                }
+            }
+        }
+
+        SpanAction<char, string> s_dupeString = (span, str) =>
+        {
+            var strSpan = str.AsSpan();
+            for (int i = 0; i < 16; i++)
+            {
+                strSpan.CopyTo(span[(i * str.Length)..]);
+            }
+        };
+
+        void CreateData()
+        {
+            using (var file = File.CreateText("2-million-unique.csv"))
+            {
+                file.Write("vendor_id,rate_code,passenger_count,trip_time_in_secs,trip_distance,payment_type,fare_amount");
+
+                for (int i = 0; i < 1_000_000; i++)
+                {
+                    var numeric = 1;
+                    var vendor_id = (i * 2 - 1).ToString((IFormatProvider)null);
+                    var payment_type = (i * 2).ToString((IFormatProvider)null);
+
+                    file.WriteLine($"{vendor_id},{numeric},{numeric},{numeric},{numeric},{payment_type},{numeric}");
+                }
+            }
+
+            using (var file = File.CreateText("2-million-20k-values.csv"))
+            {
+                file.Write("vendor_id,rate_code,passenger_count,trip_time_in_secs,trip_distance,payment_type,fare_amount");
+
+                for (int i = 0; i < 1_000_000; i++)
+                {
+                    var numeric = 1;
+                    var vendor_id = ((i % 10_000) * 2 - 1).ToString((IFormatProvider)null);
+                    var payment_type = ((i % 10_000) * 2).ToString((IFormatProvider)null);
+                    vendor_id = vendor_id[^1] + vendor_id[..^1];
+                    payment_type = payment_type[^1] + payment_type[..^1];
+
+                    file.WriteLine($"{vendor_id},{numeric},{numeric},{numeric},{numeric},{payment_type},{numeric}");
+                }
+            }
+
+            using (var file = File.CreateText("2-million-unique-long.csv"))
+            {
+                file.Write("vendor_id,rate_code,passenger_count,trip_time_in_secs,trip_distance,payment_type,fare_amount");
+
+                for (int i = 0; i < 1_000_000; i++)
+                {
+                    var numeric = 1;
+                    var vendor_id = (i * 2 - 1).ToString((IFormatProvider)null);
+                    var payment_type = (i * 2).ToString((IFormatProvider)null);
+
+                    vendor_id = string.Create<string>(vendor_id.Length * 16, vendor_id, s_dupeString);
+                    payment_type = string.Create<string>(payment_type.Length * 16, payment_type, s_dupeString);
+
+                    file.WriteLine($"{vendor_id},{numeric},{numeric},{numeric},{numeric},{payment_type},{numeric}");
+                }
+            }
+
+            using (var file = File.CreateText("2-million-20k-values-long.csv"))
+            {
+                file.Write("vendor_id,rate_code,passenger_count,trip_time_in_secs,trip_distance,payment_type,fare_amount");
+
+                for (int i = 0; i < 1_000_000; i++)
+                {
+                    var numeric = 1;
+                    var vendor_id = ((i % 10_000) * 2 - 1).ToString((IFormatProvider)null);
+                    var payment_type = ((i % 10_000) * 2).ToString((IFormatProvider)null);
+                    vendor_id = vendor_id[^1] + vendor_id[..^1];
+                    payment_type = payment_type[^1] + payment_type[..^1];
+
+                    vendor_id = string.Create<string>(vendor_id.Length * 16, vendor_id, s_dupeString);
+                    payment_type = string.Create<string>(payment_type.Length * 16, payment_type, s_dupeString);
+
+                    file.WriteLine($"{vendor_id},{numeric},{numeric},{numeric},{numeric},{payment_type},{numeric}");
                 }
             }
         }
