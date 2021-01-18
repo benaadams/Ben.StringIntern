@@ -42,7 +42,7 @@ namespace StringPoolCsvParsingBenchmark
         private readonly StringPool stringPool2 = new StringPool();
         private readonly InternPool internPool = new InternPool();
 
-        [Params("Taxi-data", "2M-Unique", "20k-Values")]
+        [Params("Taxi-data", "2M-Unique", "2M (20k-Values)")]
         public string Dataset { get; set; }
 
         [GlobalSetup]
@@ -54,7 +54,7 @@ namespace StringPoolCsvParsingBenchmark
             {
                 "Taxi-data" => File.OpenRead("taxi-fare-train-utf8.csv"),
                 "2M-Unique" => File.OpenRead("2-million-unique.csv"),
-                "20k-Values" => File.OpenRead("2-million-20k-values.csv"),
+                "2M (20k-Values)" => File.OpenRead("2-million-20k-values.csv"),
                 _ => throw new InvalidDataException()
             };
 
