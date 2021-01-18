@@ -110,6 +110,20 @@ Press p to pause, r to resume, q to quit.
 
 `dotnet build -c Release`
 
+## Performance
+```
+cd tests/Benchmarks
+dotnet run -c Release
+```
+
+|                     Method |     Mean |    Error |  StdDev | Ratio |  Allocated |
+|--------------------------- |---------:|---------:|--------:|------:|-----------:|
+|                    Default | 325.9 ms |  7.10 ms | 4.70 ms |  1.00 | 67108800 B |
+| MTHP_StringPool_Stackalloc | 299.7 ms |  4.95 ms | 3.27 ms |  0.92 |      224 B |
+|    MTHP_StringPool_Encoder | 352.3 ms | 10.29 ms | 6.81 ms |  1.08 |      512 B |
+|        StringIntern_Shared | 317.2 ms |  2.99 ms | 1.98 ms |  0.97 |      320 B |
+|      StringIntern_Instance | 293.0 ms |  2.29 ms | 1.51 ms |  0.90 |      224 B |
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information on contributing to this project.

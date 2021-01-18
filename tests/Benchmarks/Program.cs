@@ -15,6 +15,8 @@ using Microsoft.Toolkit.HighPerformance.Buffers;
 using Microsoft.Toolkit.HighPerformance.Enumerables;
 using Microsoft.Toolkit.HighPerformance.Extensions;
 
+using static Ben.Collections.Specialized.StringCache;
+
 // From Sergio0694 benchmark
 // https://gist.github.com/Sergio0694/c51cb027e6815d7b592484eebe9e3685
 // Needs data 24MB file: https://github.com/dotnet/machinelearning/blob/master/test/data/taxi-fare-train.csv 
@@ -24,7 +26,6 @@ namespace StringPoolCsvParsingBenchmark
 {
     class Program
     {
-
         static void Main()
         {
             BenchmarkRunner.Run<ParsingBenchmark>();
@@ -80,7 +81,7 @@ namespace StringPoolCsvParsingBenchmark
         }
 
         [Benchmark]
-        public void StackallocGetOrAdd()
+        public void MTHP_StringPool_Stackalloc()
         {
             var parser = new StringPoolCustomParser(this.stringPool1);
 
@@ -88,7 +89,7 @@ namespace StringPoolCsvParsingBenchmark
         }
 
         [Benchmark]
-        public void EmbeddedGetOrAdd()
+        public void MTHP_StringPool_Encoder()
         {
             var parser = new StringPoolEmbeddedParser(this.stringPool2);
 
@@ -96,7 +97,7 @@ namespace StringPoolCsvParsingBenchmark
         }
 
         [Benchmark]
-        public void StringInternShared()
+        public void StringIntern_Shared()
         {
             var parser = new InternSharedParser();
 
@@ -104,7 +105,7 @@ namespace StringPoolCsvParsingBenchmark
         }
 
         [Benchmark]
-        public void StringIntern()
+        public void StringIntern_Instance()
         {
             var parser = new InternParser(this.internPool);
 
@@ -201,7 +202,7 @@ namespace StringPoolCsvParsingBenchmark
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string ParseString(ReadOnlySpan<byte> span)
         {
-            return InternPool.Shared.InternUtf8(span);
+            return InternUtf8(span);
         }
     }
 
@@ -235,9 +236,9 @@ namespace StringPoolCsvParsingBenchmark
         public string ParseString(ReadOnlySpan<byte> span)
         {
             Span<char> chars = stackalloc char[span.Length];
-            Utf8.ToUtf16(span, chars, out _, out _);
+            Utf8.ToUtf16(span, chars, out _, out int charsWritten);
 
-            return this.pool.GetOrAdd(chars);
+            return this.pool.GetOrAdd(chars.Slice(0, charsWritten));
         }
     }
 

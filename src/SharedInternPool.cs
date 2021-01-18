@@ -6,6 +6,7 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Unicode;
 using System.Threading;
 
 namespace Ben.Collections.Specialized
@@ -176,7 +177,7 @@ namespace Ben.Collections.Specialized
         public string InternUtf8(ReadOnlySpan<byte> utf8Value)
         {
             if (utf8Value.Length == 0) return string.Empty;
-            int count = Encoding.UTF8.GetMaxCharCount(utf8Value.Length);
+            int count = utf8Value.Length * 2; // 2 x length for invalid sequence encoding
             if (count > MaxLength)
                 return Encoding.UTF8.GetString(utf8Value);
 
@@ -193,7 +194,11 @@ namespace Ben.Collections.Specialized
             Span<char> span = array is null ? stackalloc char[count] : array;
 #endif
 
+#if NET5_0 || NETCOREAPP3_1
+            Utf8.ToUtf16(utf8Value, span, out _, out count);
+#else
             count = Encoding.UTF8.GetChars(utf8Value, span);
+#endif
             span = span.Slice(0, count);
 
             var pool = GetPool(span[0]);
