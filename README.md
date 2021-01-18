@@ -116,25 +116,27 @@ cd tests/Benchmarks
 dotnet run -c Release
 ```
 
-|                     Method |         Dataset |     Mean |   Error | Ratio |  Allocated |
-|--------------------------- |---------------- |---------:|--------:|------:|-----------:|
-|                    Default | 2M (20k-Values) | 287.1 ms | 6.73 ms |  1.00 | 63991944 B |
-| MTHP_StringPool_Stackalloc | 2M (20k-Values) | 829.1 ms | 8.20 ms |  2.89 | 63991944 B |
-|    MTHP_StringPool_Encoder | 2M (20k-Values) | 909.7 ms | 5.12 ms |  3.17 | 63992232 B |
-|      StringIntern_Instance | 2M (20k-Values) | 298.6 ms | 2.68 ms |  1.04 |   639920 B |
-|        StringIntern_Shared | 2M (20k-Values) | 335.0 ms | 5.76 ms |  1.17 |    12256 B |
-|                            |                 |          |         |       |            |
-|                    Default |       2M-Unique | 293.1 ms | 9.50 ms |  1.00 | 79199856 B |
-| MTHP_StringPool_Stackalloc |       2M-Unique | 857.9 ms | 7.59 ms |  2.93 | 79199856 B |
-|    MTHP_StringPool_Encoder |       2M-Unique | 920.4 ms | 8.07 ms |  3.14 | 79200144 B |
-|      StringIntern_Instance |       2M-Unique | 480.7 ms | 8.58 ms |  1.64 | 79199856 B |
-|        StringIntern_Shared |       2M-Unique | 962.6 ms | 8.40 ms |  3.29 | 79200144 B |
-|                            |                 |          |         |       |            |
-|                    Default |       Taxi-data | 329.7 ms | 6.03 ms |  1.00 | 67108800 B |
-| MTHP_StringPool_Stackalloc |       Taxi-data | 301.8 ms | 2.14 ms |  0.92 |      224 B |
-|    MTHP_StringPool_Encoder |       Taxi-data | 346.4 ms | 2.27 ms |  1.05 |      512 B |
-|      StringIntern_Instance |       Taxi-data | 300.3 ms | 2.71 ms |  0.91 |      224 B |
-|        StringIntern_Shared |       Taxi-data | 318.1 ms | 2.51 ms |  0.97 |      320 B |
+|                Method |              Dataset |       Mean |    Error | Ratio |   Allocated |
+|---------------------- |--------------------- |-----------:|---------:|------:|------------:|
+|               Default |      2M (20k-Values) |   284.7 ms |  5.30 ms |  1.00 |  63991944 B |
+| StringIntern_Instance |      2M (20k-Values) |   295.3 ms |  4.21 ms |  1.04 |    639920 B |
+|   StringIntern_Shared |      2M (20k-Values) |   330.3 ms |  4.79 ms |  1.16 |     12256 B |
+|                       |                      |            |          |       |             |
+|               Default |            2M-Unique |   292.3 ms |  7.76 ms |  1.00 |  79199856 B |
+| StringIntern_Instance |            2M-Unique |   472.7 ms |  7.33 ms |  1.62 |  79199856 B |
+|   StringIntern_Shared |            2M-Unique | 1,035.4 ms | 11.56 ms |  3.54 |  79200144 B |
+|                       |                      |            |          |       |             |
+|               Default |            Taxi-data |   327.3 ms |  4.23 ms |  1.00 |  67108800 B |
+| StringIntern_Instance |            Taxi-data |   291.2 ms |  1.16 ms |  0.89 |       224 B |
+|   StringIntern_Shared |            Taxi-data |   311.9 ms |  2.34 ms |  0.95 |       456 B |
+|                       |                      |            |          |       |             |
+|               Default |       2M-Unique-Long |   836.2 ms | 10.45 ms |  1.00 | 460444288 B |
+| StringIntern_Instance |       2M-Unique-Long | 1,242.7 ms |  8.06 ms |  1.49 | 460444288 B |
+|   StringIntern_Shared |       2M-Unique-Long | 1,734.8 ms | 12.35 ms |  2.07 | 460444784 B |
+|                       |                      |            |          |       |             |
+|               Default | 2M (20k-Values-Long) |   736.5 ms | 33.14 ms |  1.00 | 332438368 B |
+| StringIntern_Instance | 2M (20k-Values-Long) |   368.1 ms |  2.59 ms |  0.50 |   3324384 B |
+|   StringIntern_Shared | 2M (20k-Values-Long) |   413.4 ms |  4.13 ms |  0.56 |     32200 B |
 
 ## Contributing
 
