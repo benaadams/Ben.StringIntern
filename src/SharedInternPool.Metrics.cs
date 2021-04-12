@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Ben Adams. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+
 namespace Ben.Collections.Specialized
 {
     public partial class SharedInternPool
@@ -14,10 +16,10 @@ namespace Ben.Collections.Specialized
         {
             get
             {
-                long totalAdded = _totalAdded;
-                long totalConsidered = _totalConsidered;
-                long totalDeduped = _totalDeduped;
-                long totalEvicted = _totalEvictedCount;
+                long totalAdded = Volatile.Read(ref _totalAdded);
+                long totalConsidered = Volatile.Read(ref _totalConsidered);
+                long totalDeduped = Volatile.Read(ref _totalDeduped);
+                long totalEvicted = Volatile.Read(ref _totalEvictedCount);
                 int totalCount = 0;
                 foreach (InternPool? pool in _pools)
                 {
@@ -42,7 +44,7 @@ namespace Ben.Collections.Specialized
         {
             get
             {
-                long total = _totalAdded;
+                long total = Volatile.Read(ref _totalAdded);
                 foreach (InternPool? pool in _pools)
                 {
                     if (pool != null)
@@ -62,7 +64,7 @@ namespace Ben.Collections.Specialized
         {
             get
             {
-                long total = _totalConsidered;
+                long total = Volatile.Read(ref _totalConsidered);
                 foreach (InternPool? pool in _pools)
                 {
                     if (pool != null)
@@ -102,7 +104,7 @@ namespace Ben.Collections.Specialized
         {
             get
             {
-                long total = _totalDeduped;
+                long total = Volatile.Read(ref _totalDeduped);
                 foreach (InternPool? pool in _pools)
                 {
                     if (pool != null)
@@ -122,7 +124,7 @@ namespace Ben.Collections.Specialized
         {
             get
             {
-                long total = _totalEvictedCount;
+                long total = Volatile.Read(ref _totalEvictedCount);
                 foreach (InternPool? pool in _pools)
                 {
                     if (pool != null)
