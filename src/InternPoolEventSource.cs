@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Threading;
 
@@ -9,7 +10,7 @@ namespace Ben.Collections.Specialized
 {
     internal sealed class InternPoolEventSource : EventSource
     {
-        public static readonly InternPoolEventSource Log = new InternPoolEventSource();
+        public static readonly InternPoolEventSource Log = new();
 
         private SharedInternPool? _pool;
 
@@ -25,14 +26,12 @@ namespace Ben.Collections.Specialized
         private PollingCounter? _poolSize;
         private PollingCounter? _collections;
 
-
         private long Added { get { UpdateStats(); return _stats.Added; } }
         private long Considered { get { UpdateStats(); return _stats.Considered; } }
         private int Count { get { UpdateStats(); return _stats.Count; } }
         private long Deduped { get { UpdateStats(); return _stats.Deduped; } }
         private long Evicted { get { UpdateStats(); return _stats.Evicted; } }
 
-        private long _lastCheck;
         private long _lastUpdate;
         private SharedInternPool.StatsSnapshot _stats;
 
@@ -42,14 +41,15 @@ namespace Ben.Collections.Specialized
 
         private void UpdateStats()
         {
-            var lastCheck = _lastCheck;
             var newCheck = Environment.TickCount64;
-            if (lastCheck == Interlocked.CompareExchange(ref _lastCheck, newCheck, lastCheck))
+            var lastUpdate = Volatile.Read(ref _lastUpdate);
+
+            if (newCheck - lastUpdate > 1000)
             {
-                if (newCheck - _lastUpdate > 1000)
+                if (lastUpdate == Interlocked.CompareExchange(ref _lastUpdate, newCheck, lastUpdate))
                 {
-                    _stats = _pool!.Stats;
-                    _lastUpdate = newCheck;
+                    Debug.Assert(_pool is not null, "EventSource should be enabled");
+                    _stats = _pool.Stats;
                 }
             }
         }
