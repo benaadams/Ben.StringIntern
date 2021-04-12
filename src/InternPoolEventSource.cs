@@ -10,7 +10,7 @@ namespace Ben.Collections.Specialized
 {
     internal sealed class InternPoolEventSource : EventSource
     {
-        public static readonly InternPoolEventSource Log = new();
+        public static readonly InternPoolEventSource Log = new InternPoolEventSource();
 
         private SharedInternPool? _pool;
 
@@ -48,7 +48,7 @@ namespace Ben.Collections.Specialized
             {
                 if (lastUpdate == Interlocked.CompareExchange(ref _lastUpdate, newCheck, lastUpdate))
                 {
-                    Debug.Assert(_pool is not null, "EventSource should be enabled");
+                    Debug.Assert(_pool != null, "EventSource should be enabled");
                     _stats = _pool.Stats;
                 }
             }
