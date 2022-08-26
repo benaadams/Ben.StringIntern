@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.2" />
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.0.0-preview4" />
   </ItemGroup>
 
